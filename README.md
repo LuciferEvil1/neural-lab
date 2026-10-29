@@ -72,3 +72,7 @@ Judge's Review, and failure lines in the thought log no longer dump raw API JSON
 - `libs/zxing-core-3.5.3.jar` (ZXing, Apache-2.0) is included for the QR feature.
 - The full APK build also transplants a Chaquopy runtime from a previous APK
   (see `build.sh`); the app source in `www/` + `src/` is complete as-is.
+
+## Experiment: trinity shrink on a real brain (FlyWire)
+
+Distilled the public FlyWire fly-brain connectome (FAFB v783, 3,869,878 connections, 129,351 neurons) into a trinity pattern record: **1,305,875 B at the neuropil layer — 151.8× smaller than the raw table** (3,794,913 B / 52.2× at the partner-cell-type layer), fingerprints exactly restorable at layer; fracture test (30% of entries deleted) repaired 67.3% of damaged neurons to their correct pattern with a first-pass matcher. Full measured write-up + reproducing script: `experiments/fly-brain-shrink-results.md`, `experiments/trinity_shrink.py`.
