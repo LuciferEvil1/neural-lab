@@ -354,5 +354,50 @@ function manualRun(world, name, tx, tz) {
   ok('slope tilt is computed and bounded', isFinite(w.bot.tiltP) && Math.abs(w.bot.tiltP) <= 0.31 && Math.abs(w.bot.tiltR) <= 0.31);
 }
 
+/* ---------- v81: Meta judge — FRAG parsing + judge fragment ---------- */
+console.log('— v81 judge fragment —');
+const MJ = require('/home/hatch/workspace/neural-lab/www/meta-judge.js').MetaJudge;
+ok('meta-judge module loads in node', !!MJ && typeof MJ.parseFrag === 'function' && typeof MJ.judgeReview === 'function');
+const pf = MJ.parseFrag('It looped on the same cell until the timeout. FRAG:6:3');
+ok('parseFrag reads action + severity', !!pf && pf.action === 6 && pf.severity === 3, JSON.stringify(pf));
+ok('parseFrag null when tail absent', MJ.parseFrag('just a sentence, no tail') === null);
+ok('parseFrag rejects out-of-range action', MJ.parseFrag('FRAG:9:2') === null);
+ok('parseFrag rejects out-of-range severity', MJ.parseFrag('FRAG:2:7') === null);
+const stripped = MJ.stripFrag('Lesson learned the hard way. FRAG:6:3');
+ok('stripFrag removes the tail, keeps the sentence', stripped.indexOf('FRAG') < 0 && stripped.indexOf('Lesson learned') === 0, stripped);
+{
+  const b = freshBrain();
+  const perc = b.sense(snap);
+  const dec = b.decide(perc);
+  b.learn({ success: false, reward: -0.55, objective: dec.name, percept: perc, action: dec.action, ox: 3, oz: -2, why: 'stuck' });
+  const g = b.ghosts[b.ghosts.length - 1];
+  ok('setup: ghost sealed for judge fragment', !!g && g.status === 'sealed');
+  const before = b.molecules.length;
+  const mol = b.addJudgeFragment(g, 6, 3);
+  ok('judge fragment minted into the molecule pool', !!mol && b.molecules.length === before + 1);
+  ok('judge fragment tagged with source + ghost seal', mol.src === 'judge' && mol.seal === g.seal);
+  ok('severity 3 → mass 0.9 (same ladder as ghost fragments)', approx(mol.mass, 0.9, 1e-9), 'mass=' + mol.mass);
+  let bi = 0; for (let a = 1; a < mol.bias.length; a++) if (mol.bias[a] < mol.bias[bi]) bi = a;
+  ok('judge fragment leans hardest away from the blamed action', bi === 6 && mol.bias[6] < -0.7, 'bias[6]=' + mol.bias[6]);
+  const mol1 = b.addJudgeFragment(g, 2, 1);
+  ok('severity 1 → mass 0.5', !!mol1 && approx(mol1.mass, 0.5, 1e-9), 'mass=' + (mol1 && mol1.mass));
+  ok('bad action index rejected (no fragment)', b.addJudgeFragment(g, 9, 2) === null && b.addJudgeFragment(g, -1, 2) === null);
+  g.status = 'redeemed';
+  ok('no fragment once the ghost is redeemed', b.addJudgeFragment(g, 0, 2) === null);
+  ok('brain still decides with judge fragments live', typeof b.decide(b.sense(snap)).action === 'number');
+}
+{
+  const b = freshBrain({ moleculeCap: 8 });
+  while (b.molecules.length < b.moleculeCap) b.molecules.push({ bias: Array(8).fill(0), mass: 0.5, ox: 9, oz: 9 });
+  const wells0 = b.gravity.length;
+  const perc = b.sense(snap);
+  const dec = b.decide(perc);
+  b.learn({ success: false, reward: -0.55, objective: dec.name, percept: perc, action: dec.action, ox: 1, oz: 1, why: 'cap test' });
+  const g = b.ghosts[b.ghosts.length - 1];
+  const mol = b.addJudgeFragment(g, 4, 2);
+  ok('judge fragment respects the molecule cap — overflow collapses to gravity', !!mol && b.molecules.length <= b.moleculeCap && b.gravity.length > wells0,
+    'mols=' + b.molecules.length + ' wells ' + wells0 + '→' + b.gravity.length);
+}
+
 console.log('\nRESULT: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

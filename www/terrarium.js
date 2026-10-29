@@ -885,6 +885,21 @@ window.NL_TER = (function () {
     Array.prototype.forEach.call(document.querySelectorAll('.ter-inst-tab'), function (b) {
       b.onclick = function () { showInstTab(b.dataset.tab); };
     });
+    /* v81 — Judge's Review button: one bundled-history Meta API call,
+     * rendered on the card above the tabs (renderJudgeReview). */
+    var jrb = $('ter-judge-review');
+    if (jrb) jrb.onclick = function () {
+      if (!window.MetaJudge || typeof MetaJudge.judgeReview !== 'function') { pushEvent('judge', '⚖ Meta judge unavailable in this build.'); return; }
+      var old = jrb.textContent;
+      jrb.disabled = true; jrb.textContent = '⚖ Asking the judge…';
+      try {
+        MetaJudge.judgeReview(brain, function () {
+          jrb.disabled = false; jrb.textContent = old;
+          renderJudgeReview();
+          if (panelState.inst) renderInstTab();
+        });
+      } catch (e) { jrb.disabled = false; jrb.textContent = old; }
+    };
     $('ter-btn-mod').onclick = function () { togglePanel('mod'); };
     $('ter-btn-demo').onclick = function () { toggleDemoFull(); };
     wireDemoSwipe();
@@ -994,6 +1009,20 @@ window.NL_TER = (function () {
     else if (instTab === 'molecules') renderMolecules();
     else if (instTab === 'gravity') renderGravity();
     else renderEvents();
+    renderJudgeReview();
+  }
+  /* v81 — the Judge's Review card lives above the tabs and persists
+   * across tab switches; only rewrite the DOM when the text changes. */
+  var lastReviewShown = '';
+  function renderJudgeReview() {
+    var out = $('ter-judge-review-out'); if (!out || !brain) return;
+    var r = brain.lastJudgeReview;
+    if (!r || !r.text) return;
+    if (lastReviewShown !== r.text) {
+      lastReviewShown = r.text;
+      out.innerHTML = '<div class="dsinfo">⚖ <b>Judge\'s Review</b> — at episode ' + r.episodes + '</div><div>' + esc(r.text) + '</div>';
+    }
+    out.hidden = false;
   }
   function renderSeals() {
     var el = $('ter-inst-seals'); if (!el || !brain) return;
@@ -1014,7 +1043,8 @@ window.NL_TER = (function () {
       brain.molecules.map(function (m) {
         var bi = 0;
         for (var a = 1; a < m.bias.length; a++) if (m.bias[a] < m.bias[bi]) bi = a;
-        return '<div>🧬 mass ' + m.mass.toFixed(1) + ' · leans away from “' + esc(actName(bi)) + '” · from (' + m.ox.toFixed(1) + ', ' + m.oz.toFixed(1) + ')</div>';
+        var tag = m.src === 'judge' ? '⚖ judge fragment · ghost ' + esc(m.seal || '?') + ' · ' : '';
+        return '<div>' + tag + '🧬 mass ' + m.mass.toFixed(1) + ' · leans away from “' + esc(actName(bi)) + '” · from (' + m.ox.toFixed(1) + ', ' + m.oz.toFixed(1) + ')</div>';
       }).join('');
   }
   function renderGravity() {

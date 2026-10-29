@@ -1,13 +1,13 @@
 #!/bin/bash
-# Neural Lab v80-swipe APK: v76 + true overlay fullscreen — HUD top, buttons
+# Neural Lab v81 APK: v80 + judge fragment (verdict FRAG tail mints a bounded molecule) + Judge's Review card in Instruments.
 # floating, thoughts as a bottom sheet over the full-screen 3D world, like
 # the pad chip (his v76 feedback: red-circled segment must be ON the world).
 # aapt2 + javac + d8, transplant lib/ + chaquopy assets from v47, sign.
 # NOTE: build dir is passed to the Python steps via $B (never hardcoded) — v72 lesson.
 set -e
 PROJ=~/workspace/neural-lab
-B=$PROJ/build82
-OUT=neural-lab-v80-hackathon.apk
+B=$PROJ/build83
+OUT=neural-lab-v81-hackathon.apk
 SDK=~/workspace/.android-sdk
 BT=$SDK/build-tools/36.1.0
 AJAR=$SDK/platforms/android-36/android.jar

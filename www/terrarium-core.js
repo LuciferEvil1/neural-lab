@@ -347,6 +347,26 @@ TrinityBrain.prototype._breakGhost = function (gi) {
   this.events.push({ kind: 'molecule', msg: '🧬 ghost ' + g.seal + ' FAILED its appeal → broke into 3 molecules (living bias fragments)' });
   this.think('Ghost ' + g.seal + ' could not come back. It breaks into molecules — I will lean away from how it thought.');
 };
+/* v81 — the Meta judge's verdict can now settle into the brain: when a
+ * verdict names a blamed action + severity, the core mints ONE molecule
+ * fragment from it — same mass ladder (0.5/0.7/0.9), same −0.8 bias depth,
+ * same molecule cap and black-hole overflow as ghost fragments. The judge
+ * is bounded by the exact rules every other fragment lives by. Only for
+ * ghosts still sealed when the verdict lands; the seal never waits on it. */
+TrinityBrain.prototype.addJudgeFragment = function (ghost, actionIdx, severity) {
+  if (!ghost || ghost.status !== 'sealed') return null;
+  var a = parseInt(actionIdx, 10), s = parseInt(severity, 10);
+  if (!(a >= 0 && a < ACTIONS.length)) return null;
+  if (!(s >= 1 && s <= 3)) s = 2;
+  var bias = [];
+  for (var i = 0; i < ACTIONS.length; i++) bias.push((i === a ? -0.8 : 0) + (Math.random() - 0.5) * 0.1);
+  var mol = { bias: bias, mass: 0.5 + (s - 1) * 0.2, ox: ghost.ox || 0, oz: ghost.oz || 0, src: 'judge', seal: ghost.seal };
+  this.molecules.push(mol);
+  this.events.push({ kind: 'judge', msg: '⚖🧬 judge fragment minted from ghost ' + ghost.seal + ' — leans away from "' + ACTIONS[a] + '" (severity ' + s + '/3)' });
+  this.think('The judge\'s verdict on ghost ' + ghost.seal + ' settles into a molecule — I lean away from "' + ACTIONS[a] + '" now.');
+  this._maybeCollapse();
+  return mol;
+};
 TrinityBrain.prototype._maybeCollapse = function () {
   var merged = 0;
   while (this.ghosts.length > this.ghostCap) {

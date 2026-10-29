@@ -15,7 +15,12 @@ Built by Ahkeem Barros (**Team Annihilus**) for the Meta Global AI Developer Hac
   model (`muse-spark-1.3`, via the Meta Model API) **judges the sealed failure**; the
   short verdict is stored with the ghost and shown in the app's thought log. The seal
   itself is local and authoritative — the judge call is fire-and-forget and never
-  blocks the loop.
+  blocks the loop. The verdict also carries a machine-readable tail naming the
+  blamed action and a severity; when it parses, the brain mints **one bounded
+  molecule fragment from the verdict** — same caps, mass ladder and black-hole
+  overflow as ghost fragments — so the judge's words steer future decisions. A
+  **Judge's Review** card (Instruments) bundles the recent ghost history into one
+  further call and renders the judge's paragraph review of the brain's habits.
 - A later run at the same objective is the ghost's **appeal**. Success redeems it.
   Failure breaks it into **Molecules** — steering fragments (mass + bias) that bias
   future decisions away from the failed run's action pattern.
@@ -35,7 +40,7 @@ Built by Ahkeem Barros (**Team Annihilus**) for the Meta Global AI Developer Hac
   judge), `app.js` plus feature modules, `index.html`.
 - `src/` — the Android host: `MainActivity` and the native bridges (HTTP bridge used
   by the judge call, Drive bridge, gym/observer features).
-- `terrarium_tests.js` — the brain-core test suite (81 tests, run with Node).
+- `terrarium_tests.js` — the brain-core test suite (97 tests, run with Node).
 - `build.sh` — the APK build used for the current build (aapt2 + javac + d8 +
   apksigner; Android SDK build-tools 36.1.0, JDK 21).
 
@@ -45,7 +50,8 @@ Built by Ahkeem Barros (**Team Annihilus**) for the Meta Global AI Developer Hac
 features, and the C export of the trained brain.
 
 **Built during the hackathon:** the Meta AI judge loop inside the Ghost seal step,
-the Dish instruments, the fullscreen demo view with its swipe deck, and the
+the judge fragment (verdicts minting steering molecules) and the Judge's Review
+card, the Dish instruments, the fullscreen demo view with its swipe deck, and the
 demo/submission packaging.
 
 ## Build notes
