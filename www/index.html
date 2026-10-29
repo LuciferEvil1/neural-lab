@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Neural Lab</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<!-- ══ top menu bar ══ -->
+<header id="menubar">
+  <button id="hamburger" aria-label="Menu">☰</button>
+  <div class="brand">🧠 Neural Lab <span class="ver" id="app-ver">v80</span></div>
+  <nav class="menus">
+    <div class="menu"><button class="menubtn" data-menu="file">File</button>
+      <div class="dropdown" id="menu-file">
+        <button data-act="demo-xor">Load demo: XOR</button>
+        <button data-act="demo-blobs">Load demo: 2D blobs</button>
+        <button data-act="import-csv">Import CSV…</button>
+        <button data-act="save-model">Save model…</button>
+        <button data-act="load-model">Load model…</button>
+      </div>
+    </div>
+    <div class="menu"><button class="menubtn" data-menu="train">Train</button>
+      <div class="dropdown" id="menu-train">
+        <button data-act="start-train">Start training (Ctrl+Enter)</button>
+        <button data-act="stop-train">Stop</button>
+        <button data-act="reset-model">Reset weights</button>
+      </div>
+    </div>
+    <div class="menu"><button class="menubtn" data-menu="view">View</button>
+      <div class="dropdown" id="menu-view">
+        <button data-act="goto-brain">Brain view</button>
+        <button data-act="goto-notes">Notes vault</button>
+        <button data-act="goto-dev">Developer options</button>
+        <button data-act="clear-console">Clear console</button>
+      </div>
+    </div>
+  </nav>
+  <div class="menuspacer"></div>
+  <div class="netstate" id="netstate">no model</div>
+  <button id="props-toggle" aria-label="Properties">ⓘ</button>
+</header>
+
+<div id="main">
+  <!-- ══ left tool rail ══ -->
+  <aside id="toolrail">
+    <button class="tool active" data-tab="train" title="Train">🧠<span>Train</span></button>
+    <button class="tool" data-tab="brain" title="Brain">🌀<span>Brain</span></button>
+    <button class="tool" data-tab="terrarium" title="Terrarium">🌍<span>Terra</span></button>
+    <button class="tool" data-tab="notes" title="Notes">📓<span>Notes</span></button>
+    <button class="tool" data-tab="editor" title="Editor">📝<span>Edit</span></button>
+    <button class="tool" data-tab="github" title="GitHub">🐙<span>GitHub</span></button>
+    <button class="tool" data-tab="console" title="Console">🖥️<span>Log</span></button>
+    <button class="tool" data-tab="dev" title="Developer options">⚙️<span>Dev</span></button>
+    <button class="tool" data-tab="spiking" title="Spiking">⚡<span>Spike</span></button>
+    <button class="tool" data-tab="llm" title="LLM lab">💬<span>LLM</span></button>
+    <button class="tool" data-tab="re" title="ReverseLab">🔧<span>RE</span></button>
+    <button class="tool" data-tab="q" title="QuantumVM">⚛️<span>Q</span></button>
+    <button class="tool" data-tab="observer" title="Observer">👁<span>Eye</span></button>
+    <button class="tool" data-tab="crawler" title="Crawler">🕷<span>Crawl</span></button>
+    <button class="tool" data-tab="gym" title="Gym">🎮<span>Gym</span></button>
+    <button class="tool" data-tab="drive" title="Drive">💾<span>Drive</span></button>
+  </aside>
+
+  <!-- ══ center workspace ══ -->
+  <section id="workspace">
+    <div id="tabbar">
+      <button class="tab active" data-tab="train">Train</button>
+      <button class="tab" data-tab="brain">Brain</button>
+      <button class="tab" data-tab="terrarium">🌍 Terrarium</button>
+      <button class="tab" data-tab="notes">Notes</button>
+      <button class="tab" data-tab="editor">Editor</button>
+      <button class="tab" data-tab="github">GitHub</button>
+      <button class="tab" data-tab="console">Console</button>
+      <button class="tab" data-tab="dev">Dev Options</button>
+      <button class="tab" data-tab="spiking">Spiking</button>
+      <button class="tab" data-tab="llm">💬 LLM</button>
+      <button class="tab" data-tab="re">🔧 RE</button>
+      <button class="tab" data-tab="q">⚛️ Quantum</button>
+      <button class="tab" data-tab="observer">👁 Observer</button>
+      <button class="tab" data-tab="crawler">🕷 Crawler</button>
+      <button class="tab" data-tab="gym">🎮 Gym</button>
+      <button class="tab" data-tab="drive">💾 Drive</button>
+    </div>
+
+    <div id="panels">
+      <!-- TRAIN -->
+      <div class="panel active" id="panel-train">
+        <div class="train-grid">
+          <div class="card" id="dataset-card">
+            <h3>Dataset</h3>
+            <div class="row"><button id="btn-demo-xor">XOR demo</button><button id="btn-demo-blobs">Blobs demo</button><button id="btn-demo-decoder">Binary decoder</button></div>
+            <div class="row"><button id="btn-demo-digits">Digits CNN (8×8)</button><button id="btn-demo-ohm" class="ghost">Ohm's law (V=IR)</button><button id="btn-inspect-kernels" class="ghost">Inspect kernels</button></div>
+            <div class="row"><button id="btn-demo-attn">Sequences (attention)</button></div>
+            <div class="row"><button id="btn-import-csv">Import CSV…</button>
+              <input type="file" id="csv-file" accept="*/*" style="display:none"></div>
+            <div class="field"><label>Task</label><select id="task-sel"><option value="classification">Classification</option><option value="regression">Regression</option></select></div>
+            <div class="field"><label>Label column</label><select id="label-col"></select></div>
+            <div class="field"><label>Train split <span id="split-val">80%</span></label>
+              <input type="range" id="split" min="50" max="95" value="80"></div>
+            <div class="dsinfo" id="dsinfo">No dataset loaded.</div>
+          </div>
+          <div class="card" id="model-card">
+            <h3>Model</h3>
+            <div class="field"><label>Architecture</label><select id="arch-sel"><option value="mlp">MLP</option><option value="transformer">Transformer (attention)</option></select></div>
+            <div class="field" id="dmodel-field" style="display:none"><label>d_model (attention width)</label><select id="dmodel"><option value="8">8</option><option value="16" selected>16</option></select></div>
+            <div class="field"><label>Hidden layers (e.g. 8,4)</label><input id="hidden" type="text" value="8,4"></div>
+            <div class="field"><label>Activation</label><select id="activation"><option value="tanh">tanh</option><option value="relu">relu</option></select></div>
+            <div class="field"><label>Optimizer</label><select id="optimizer"><option value="sgd">SGD</option><option value="adam">Adam</option></select></div>
+            <div class="field"><label>Dropout (0–0.9)</label><input id="dropout" type="number" step="0.05" min="0" max="0.9" value="0"></div>
+            <div class="field"><label>Learning rate</label><input id="lr" type="number" step="0.01" min="0.001" max="2" value="0.3"></div>
+            <div class="field"><label>Epochs</label><input id="epochs" type="number" min="1" max="50000" value="500"></div>
+            <div class="row"><button id="btn-build" class="ghost">Rebuild model</button><button id="btn-export-q88" class="ghost">Export Q8.8</button><button id="btn-export-c" class="ghost">Export C</button></div>
+            <div class="dsinfo" id="modelinfo">—</div>
+          </div>
+          <div class="card wide" id="train-card">
+            <h3>Training</h3>
+            <div class="row">
+              <button id="btn-train" class="primary">▶ Train</button>
+              <button id="btn-stop" class="ghost" disabled>⏹ Stop</button>
+            </div>
+            <canvas id="loss-curve" width="600" height="220"></canvas>
+            <div class="metrics">
+              <div>epoch <b id="m-epoch">0</b></div>
+              <div>loss <b id="m-loss">—</b></div>
+              <div><span id="m-tracc-lab">train acc</span> <b id="m-tracc">—</b></div>
+              <div><span id="m-teacc-lab">test acc</span> <b id="m-teacc">—</b></div>
+            </div>
+          </div>
+          <div class="card wide" id="predict-card">
+            <h3>Predict</h3>
+            <div class="row" id="predict-inputs"></div>
+            <div class="row"><button id="btn-predict" class="ghost">Predict</button>
+              <div class="predout" id="predout">—</div></div>
+          </div>
+          <div class="card wide" id="edge-card">
+            <h3>Edge AI (Zephyr branch)</h3>
+            <div class="row"><label>Target <select id="edge-target">
+              <option value="m4">Cortex-M4 @ 64 MHz</option>
+              <option value="esp32">ESP32 @ 240 MHz</option>
+              <option value="riscv">RISC-V @ 160 MHz</option>
+            </select></label></div>
+            <div class="row">
+              <button id="btn-edge-profile" class="ghost">Profile inference</button>
+              <button id="btn-edge-ota" class="ghost">OTA update</button>
+              <button id="btn-edge-stream" class="ghost">Load stream demo</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BRAIN -->
+      <div class="panel" id="panel-brain">
+        <div class="card wide">
+          <h3>🌀 Brain — live network view</h3>
+          <div class="brain-ctrl">
+            <button id="brain-mode" class="ghost">📊 Computation Graph</button>
+            <button id="brain-play" class="ghost">⏸ Pause</button>
+            <span class="mini">spin <input type="range" id="brain-speed" min="0" max="200" value="60"></span>
+            <label class="mini"><input type="checkbox" id="brain-labels" checked> labels</label>
+            <label class="mini"><input type="checkbox" id="brain-edges" checked> edges</label>
+          </div>
+          <div class="brain-ctrl">
+            <button id="brain-prev" class="ghost">◀</button>
+            <select id="brain-sample"></select>
+            <button id="brain-next" class="ghost">▶</button>
+          </div>
+          <canvas id="brain-canvas" width="700" height="460"></canvas>
+          <div id="brain-dag-wrap" hidden>
+            <svg id="brain-dag" style="width:100%;height:420px;max-height:62vh;background:#0d0d12;border:1px solid var(--line);border-radius:8px;touch-action:none" role="img" aria-label="autograd computation graph"></svg>
+            <div class="brain-ctrl" style="margin-top:10px">
+              <button id="dag-play" class="ghost">▶ Backprop</button>
+              <button id="dag-zin" class="ghost">＋</button>
+              <button id="dag-zout" class="ghost">－</button>
+              <button id="dag-zreset" class="ghost">⟲ Reset view</button>
+            </div>
+            <div class="dsinfo" id="dag-cap">Computation graph of the current nanograd tape.</div>
+          </div>
+          <div id="brain-attn-wrap" hidden>
+            <div class="brain-ctrl">
+              <label class="mini">sequence <input id="attn-seq" type="text" maxlength="8" value="ABC" style="width:104px;text-transform:uppercase" aria-label="attention sequence"></label>
+              <button id="attn-apply" class="ghost">Apply</button>
+            </div>
+            <div class="attn-scroll"><canvas id="brain-attn" role="img" aria-label="causal attention heatmap"></canvas></div>
+            <div class="dsinfo" id="attn-cap">—</div>
+            <div class="dsinfo" id="attn-read">tap a cell to inspect its query–key score and weight distribution</div>
+          </div>
+          <div class="dsinfo" id="brain-info">Build a model on the Train tab, then watch it think. Tap a node to inspect it.</div>
+        </div>
+      </div>
+
+
+      <!-- TERRARIUM (v67: Dish rebuilt as an observatory — one bot, full trinity brain) -->
+      <div class="panel" id="panel-terrarium">
+        <div class="card wide" style="padding:8px">
+          <h3>🌍 Terrarium — the observatory</h3>
+          <div class="dsinfo" id="ter-dsinfo">One bot carrying the <b>full trinity brain</b>. No orders, no curriculum — it forms its own goals, judges its own runs, seals its failures as ghosts, and grows toward this phone's ceiling. The Brain view lives here now: tap 🧠 Nodes.</div>
+          <div id="ter-stage">
+            <div id="ter-brain-overlay" hidden>
+              <canvas id="ter-brain-canvas"></canvas>
+              <button id="ter-brain-close" class="ghost">✕</button>
+              <div id="ter-brain-cap" class="dsinfo">—</div>
+            </div>
+            <div id="ter-chip">🎮 pad: L-stick pan · R-stick orbit · A focus · B brain · X thoughts · Y mod</div>
+          </div>
+          <div class="ter-budget"><div id="ter-budget-bar"></div></div>
+          <div id="ter-hud" class="dsinfo">probing this host…</div>
+          <div class="row ter-btns">
+            <button id="ter-pause" class="ghost">⏸ Pause</button>
+            <button id="ter-speed" class="ghost">⏩ 1×</button>
+            <button id="ter-follow" class="ghost">📷 Follow</button>
+            <button id="ter-btn-brain" class="ghost">🧠 Nodes</button>
+            <button id="ter-btn-thoughts" class="ghost">💭 Thoughts</button>
+            <button id="ter-btn-inst" class="ghost">📊 Instruments</button>
+            <button id="ter-btn-mod" class="ghost">🧩 Mod</button>
+            <button id="ter-btn-demo" class="ghost">⛶ Full screen</button>
+          </div>
+        </div>
+        <div class="card wide" id="ter-panel-thoughts" hidden>
+          <h3>💭 The bot, live <button id="ter-thoughts-close" class="ghost ter-x">✕</button></h3>
+          <div id="ter-thoughts-body" class="dsinfo">—</div>
+        </div>
+        <div class="card wide" id="ter-panel-inst" hidden>
+          <h3>📊 Instruments — lifecycle events <button id="ter-inst-close" class="ghost ter-x">✕</button></h3>
+          <div class="dsinfo">Ghost seals carry the checksum of the whole failed run. Appeals, molecules, black-hole gravity and auto-expansion all land here as they happen.</div>
+          <div class="row" id="ter-inst-tabs">
+            <button class="ghost ter-inst-tab" data-tab="events" style="min-height:48px">📜 Events</button>
+            <button class="ghost ter-inst-tab" data-tab="seals" style="min-height:48px">👻 Seals</button>
+            <button class="ghost ter-inst-tab" data-tab="molecules" style="min-height:48px">🧬 Molecules</button>
+            <button class="ghost ter-inst-tab" data-tab="gravity" style="min-height:48px">🕳 Gravity</button>
+          </div>
+          <div id="ter-events" class="ter-events"></div>
+          <div id="ter-inst-seals" class="ter-events" hidden></div>
+          <div id="ter-inst-molecules" class="ter-events" hidden></div>
+          <div id="ter-inst-gravity" class="ter-events" hidden></div>
+        </div>
+        <div class="card wide" id="ter-panel-mod" hidden>
+          <h3>🧩 Mod menu — add things to the world <button id="ter-mod-close" class="ghost ter-x">✕</button></h3>
+          <div class="dsinfo" id="ter-mod-hint">Pick a kind, then tap the ground to place it.</div>
+          <div id="ter-mod-kinds" class="ter-kinds"></div>
+          <div id="ter-mod-list"></div>
+          <div class="row"><button id="ter-reset-layout" class="ghost" style="min-height:48px">↺ Reset layout to default world</button></div>
+        </div>
+      </div>
+
+      <!-- NOTES -->
+      <div class="panel" id="panel-notes">
+        <div class="card wide">
+          <h3>📓 Notes — vault</h3>
+          <div class="row">
+            <select id="vault-sel" style="flex:1;min-width:140px"></select>
+            <button id="btn-vault-new" class="ghost">+ Vault</button>
+            <button id="btn-vault-del" class="ghost">🗑</button>
+          </div>
+          <div class="notes-grid">
+            <div class="notes-side">
+              <div class="row"><button id="btn-note-new" class="primary" style="flex:1">+ Note</button></div>
+              <div class="row"><input type="text" id="note-search" placeholder="filter notes…"></div>
+              <ul id="note-list"></ul>
+              <h4 class="tags-h">Tags</h4>
+              <div id="tag-pane"></div>
+            </div>
+            <div class="notes-main">
+              <div class="row">
+                <div class="seg" id="notes-viewseg">
+                  <button data-nv="edit" class="active">Edit</button>
+                  <button data-nv="preview">Preview</button>
+                  <button data-nv="graph">Graph</button>
+                </div>
+                <span class="flexsp"></span>
+                <button id="btn-note-del" class="ghost">🗑</button>
+              </div>
+              <div id="notes-editview">
+                <input type="text" id="note-title" placeholder="Note title">
+                <textarea id="note-body" placeholder="# hello&#10;&#10;Link to [[another note]] and tag it #idea"></textarea>
+              </div>
+              <div id="notes-preview" class="md-preview" hidden></div>
+              <div id="notes-graphview" hidden>
+                <div class="brain-ctrl">
+                  <button id="ngraph-play" class="ghost">⏸ Pause</button>
+                  <span class="mini">spin <input type="range" id="ngraph-speed" min="0" max="200" value="50"></span>
+                </div>
+                <canvas id="ngraph-canvas"></canvas>
+                <div class="dsinfo">Tap a dot to open that note. Bigger dots have more links.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EDITOR -->
+      <div class="panel" id="panel-editor">
+        <div class="ed-grid">
+          <div class="card" id="filelist-card">
+            <h3>Files</h3>
+            <div class="row"><button id="btn-new-file" class="ghost">+ New</button>
+              <button id="btn-open-file" class="ghost">Open…</button>
+              <input type="file" id="open-file" style="display:none"></div>
+            <ul id="filelist"></ul>
+          </div>
+          <div class="card ed-main">
+            <div class="ed-head"><h3 id="ed-title">untitled.js</h3>
+              <div class="row"><button id="btn-ed-run" class="primary">▶ Run</button><button id="btn-ed-save" class="ghost">Save (Ctrl+S)</button></div></div>
+            <div class="ed-wrap">
+              <pre id="ed-hl" aria-hidden="true"><code id="ed-hl-code"></code></pre>
+              <textarea id="ed-text" spellcheck="false" placeholder="// write code here"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GITHUB -->
+      <div class="panel" id="panel-github">
+        <div class="card wide">
+          <h3>GitHub — public repos</h3>
+          <div class="row">
+            <input id="gh-repo" type="text" placeholder="user/repo  e.g. torvalds/linux" style="flex:1">
+            <button id="btn-gh-list" class="primary">List files</button>
+          </div>
+          <div class="gh-path" id="gh-path"></div>
+          <ul id="gh-list" class="ghlist"></ul>
+          <div class="dsinfo">Needs internet. Public repositories only — no login, no private repos in v1.</div>
+        </div>
+      </div>
+
+      <!-- CONSOLE -->
+      <div class="panel" id="panel-console">
+        <div class="card wide fill">
+          <h3>Console</h3>
+          <div id="console-out" class="console-out"></div>
+          <div class="row"><input id="edge-cmd" placeholder="edge shell — try: help" style="flex:1"><button id="btn-edge-run" class="ghost">Run</button></div>
+          <div class="row"><button id="btn-clear-console" class="ghost">Clear</button></div>
+        </div>
+      </div>
+
+      <!-- DEV OPTIONS -->
+      <div class="panel" id="panel-dev">
+        <div class="card wide">
+          <h3>Developer options</h3>
+          <label class="toggle"><input type="checkbox" id="dev-verbose"><span>Verbose console logging <em>— logs every N epochs + data stats while training</em></span></label>
+          <label class="toggle"><input type="checkbox" id="dev-fps"><span>FPS overlay <em>— live frame-rate counter in the corner</em></span></label>
+          <label class="toggle"><input type="checkbox" id="dev-smooth" checked><span>Loss-curve smoothing <em>— 10-epoch moving average on the plot</em></span></label>
+          <label class="toggle"><input type="checkbox" id="dev-shapes" checked><span>Show tensor shapes <em>— prints layer weight/bias dimensions on build &amp; train</em></span></label>
+          <label class="toggle"><input type="checkbox" id="dev-confirm"><span>Confirm before reset <em>— asks before weights are re-initialized</em></span></label>
+          <div class="dsinfo">These take effect immediately and are remembered.</div>
+        </div>
+        <div class="card wide">
+          <h3>Meta API — Ghost judge (hackathon)</h3>
+          <div class="dsinfo">Optional. Paste your Meta Model API key here, on this phone only. It stays in this app's on-device storage and is sent only to the Meta Model API when a run is condemned — one short judgment call per sealed ghost. Without a key, ghosts seal locally as before. The key is never shown back.</div>
+          <div class="row"><input id="dev-meta-key" type="password" placeholder="Meta API key — paste here" style="flex:1" autocomplete="off" autocapitalize="off" spellcheck="false"><button id="btn-meta-key-save" class="primary">Save</button><button id="btn-meta-key-clear" class="ghost">Clear</button></div>
+          <div id="dev-meta-key-status" class="dim" style="margin:6px 0"></div>
+        </div>
+        <div class="card wide" id="qrbridge-card">
+          <h3>📷 QR Bridge — optical air-gap patch transfer</h3>
+          <div class="dsinfo">Receive code or text from another screen (PC, library computer) through the camera — no accounts, no network, no cloud. <b>Nothing runs on scan.</b> Every patch is SHA-256-verified, previewed, and only applies when you tap Apply. Failed patches fall back to the previous version automatically.</div>
+          <div class="row">
+            <button id="btn-qr-scan" class="primary">📷 Scan patch</button>
+          </div>
+          <div id="qr-status" class="dim" style="margin:6px 0"></div>
+          <div id="qr-preview-card" hidden>
+            <div class="row" style="gap:8px;flex-wrap:wrap">
+              <span class="dim">sha256 <span id="qr-hash" style="font-family:monospace"></span></span>
+              <span id="qr-hash-ok"></span>
+              <span class="dim">size <span id="qr-size"></span></span>
+            </div>
+            <pre id="qr-preview" class="dim" style="max-height:160px;overflow:auto;white-space:pre-wrap"></pre>
+            <div class="field"><input id="qr-mod-name" placeholder="module name (for JS apply)" style="width:100%"></div>
+            <div class="row">
+              <button id="btn-qr-apply-js" class="primary">Apply as JS module</button>
+            </div>
+            <div class="field"><input id="qr-txt-name" placeholder="filename (for text save)" style="width:100%"></div>
+            <div class="row">
+              <button id="btn-qr-save-txt" class="ghost">Save as text file</button>
+              <button id="btn-qr-to-brainfood" class="ghost" hidden>🧠 Append to brain-food.txt</button>
+              <button id="btn-qr-discard" class="ghost">Discard</button>
+            </div>
+          </div>
+          <div id="qr-result" class="dim" style="margin:6px 0"></div>
+          <div class="dsinfo">stored modules: <span id="qr-mod-list">(none yet)</span></div>
+        </div>
+      </div>
+
+      <!-- SPIKING (embedded Python + Nengo) -->
+      <div class="panel" id="panel-spiking">
+        <div class="card wide">
+          <div class="ed-head"><h3>⚡ Spiking — Python + Nengo</h3></div>
+          <div class="dsinfo" id="spike-pyinfo">Python: checking…</div>
+          <div class="spike-open" id="btn-spike-open" role="button" title="Open the full-screen Python editor">
+            <span class="spike-open-title">📝 Python editor — tap to open</span>
+            <pre class="spike-preview" id="spike-preview"># write Python here — numpy + nengo available</pre>
+            <span class="spike-open-hint">Opens as its own full-screen window</span>
+          </div>
+          <div class="row">
+            <button id="btn-spike-run" class="primary">▶ Run Python</button>
+            <select id="spike-preset" style="flex:1;min-width:140px" aria-label="Python preset">
+              <option value="nengo">Nengo demo: 100 LIF neurons</option>
+              <option value="quant">TinyML: int8 quantization</option>
+              <option value="event">Neuromorphic: event-driven detector</option>
+              <option value="sched">FreeRTOS: cooperative scheduler</option>
+              <option value="dvsloop">Closed-loop: DVS &#8594; PWM/UART</option>
+              <option value="stdp">Plasticity: STDP edge detector</option>
+              <option value="hh">Biophysics: Hodgkin-Huxley neuron</option>
+              <option value="deep">Deep learning: NumPy MLP with Adam</option>
+              <option value="jeffress">Sound: Jeffress delay-line localization</option>
+              <option value="izhi">Cortex: Izhikevich neuron zoo</option>
+              <option value="nef">NEF: Nengo spiking arithmetic</option>
+              <option value="nano">Autograd: nanograd tape parity check</option>
+              <option value="attn13">Transformer: NumPy causal attention</option>
+              <option value="arm14">ReverseLab: ARM dataset + disasm parity</option>
+              <option value="q15">QuantumVM: Bell parity</option>
+              <option value="evo16">Quantum Nexus Core: Ahkeem's self-modifying AI</option>
+            </select>
+            <button id="btn-spike-demo" class="ghost">Load preset</button>
+            <button id="btn-spike-clear" class="ghost">Clear output</button>
+          </div>
+        </div>
+        <div class="card wide">
+          <h3>Output</h3>
+          <div id="spike-out" class="console-out"></div>
+        </div>
+      </div>
+
+      <!-- LLM LAB (lite, fully offline — text plumbing only, no model runs) -->
+      <div class="panel" id="panel-llm">
+        <div class="card wide" id="llm-tok-card">
+          <h3>💬 Tokenizer playground</h3>
+          <div class="dsinfo">This is how a language model "sees" text: chopped into word + punctuation tokens, each mapped to an id by first appearance. Type below and tokenize — no model runs here, just the chunking.</div>
+          <div class="field"><textarea id="llm-tok-in" rows="3" placeholder="type something to tokenize…"></textarea></div>
+          <div class="row"><button id="btn-llm-tok" class="primary">Tokenize</button></div>
+          <pre id="llm-tok-out" class="dim">type something above, then hit Tokenize.</pre>
+        </div>
+        <div class="card wide" id="llm-fmt-card">
+          <h3>Chat template</h3>
+          <div class="dsinfo">Instruction-tuned models learn their manners from templates like this — role markers that say who is speaking.</div>
+          <div class="field"><label>system</label><textarea id="llm-sys" rows="2">You are a helpful assistant.</textarea></div>
+          <div class="field"><label>user</label><textarea id="llm-user" rows="2">What is a neuron?</textarea></div>
+          <div class="field"><label>assistant</label><textarea id="llm-asst" rows="2">A neuron is a tiny unit that takes inputs, weights them, and fires an output — the building block of neural networks.</textarea></div>
+          <div class="row"><button id="btn-llm-fmt" class="primary">Format</button></div>
+          <pre id="llm-fmt-out" class="dim">hit Format to see the template.</pre>
+        </div>
+        <div class="card wide" id="llm-gen-card">
+          <h3>Synthetic data pipeline</h3>
+          <div class="dsinfo">Instruction tuning needs thousands of instruction→response pairs. This pipeline generates candidates from templates, runs them through quality filters, and saves the survivors — the same idea as real synthetic-data curation, fully offline.</div>
+          <div class="row">
+            <label class="mini">seed <input id="llm-seed" type="number" value="7" style="width:90px"></label>
+            <button id="btn-llm-gen" class="primary">Generate 24 pairs</button>
+            <button id="btn-llm-save" class="ghost">Save dataset</button>
+          </div>
+          <pre id="llm-gen-out" class="dim">no pairs generated yet.</pre>
+        </div>
+        <div class="card wide" id="llm-dpo-card">
+          <h3>DPO preference rating</h3>
+          <div class="dsinfo">Direct Preference Optimization learns from human taste: pick the answer you prefer and the model gets steered toward winners like it. Your votes stay on this device.</div>
+          <div id="llm-dpo-prompt" class="dim">open this tab to load the first pair.</div>
+          <div class="row">
+            <button id="btn-dpo-a">Prefer A</button>
+            <button id="btn-dpo-b">Prefer B</button>
+            <button id="btn-dpo-new" class="ghost">New pair</button>
+          </div>
+          <div id="llm-dpo-stats" class="dim">no votes yet.</div>
+        </div>
+        <div class="card wide" id="llm-tongue-card">
+          <h3>🗣️ First Tongue</h3>
+          <div class="dsinfo">Your Colab-trained character model, running fully offline on this device. Give it a seed line, set the temperature, let it speak.</div>
+          <div class="field"><label>seed line</label><textarea id="tongue-seed" rows="2" placeholder="a line to start from…"></textarea></div>
+          <div class="row">
+            <label class="mini">temperature <input id="tongue-temp" type="range" min="0.1" max="1.2" step="0.05" value="0.4" style="width:120px"> <span id="tongue-temp-val">0.40</span></label>
+            <label class="mini">chars <input id="tongue-n" type="number" value="300" style="width:70px"></label>
+            <button id="btn-tongue" class="primary">Speak</button>
+            <button id="btn-tongue-wack" title="That run was wack — the whole run (seed + output) is sealed as a ghost, not deleted">That was wack</button>
+            <span id="tongue-status" class="dim"></span>
+          </div>
+          <pre id="tongue-out" class="dim" style="white-space:pre-wrap">the tongue is still asleep — hit Speak to wake it.</pre>
+          <div class="dim" id="tongue-trinity-status" style="margin-top:6px">trinity: no molecules live · no ghosts · gravity empty</div>
+        </div>
+        <div class="card wide" id="llm-thought-card">
+          <h3>💭 Free Thought</h3>
+          <div class="dsinfo">The tongue thinks its own thoughts — no seed needed. Each cycle is think-then-speak: a dim inner thought, then a spoken answer built from it. Every 4th cycle it wonders — asks itself a why/what-if/how and answers. The AI judges its own mains: a degenerate cycle seals the whole run as a ghost — never deleted. Ghosts that fail their second chance break into molecules. Watch it steer itself.</div>
+          <div class="row">
+            <button id="btn-thought" class="primary">Start thinking</button>
+            <span id="thought-status" class="dim"></span>
+          </div>
+          <div id="thought-log" style="max-height:320px;overflow-y:auto;margin-top:8px"></div>
+        </div>
+        <div class="card wide" id="llm-ghost-card">
+          <h3>👻 Ghost Archive</h3>
+          <div class="dsinfo">Whole failed runs, checksum-sealed — never lone outputs. Sealed by the AI's own judgment (auto) or condemned by you. Recover one for a second chance: condemn it again and the ghost breaks into molecules, recycled as steering.</div>
+          <div id="tongue-ghost-archive" style="max-height:260px;overflow-y:auto;margin-top:8px"><span class="dim">no ghosts sealed yet.</span></div>
+        </div>
+        <div class="card wide" id="llm-feeder-card">
+          <h3>🧠 Brain Feeder</h3>
+          <div class="dsinfo">Teach the next brain new things. Paste a page URL — I'll pull its clean text and save it into <b>brain-food.txt</b>. Or paste text directly (e.g. from Gemini). Upload that file to your Drive's top level and the next Colab training run studies it alongside the movies.</div>
+          <div class="field"><label>page URL</label><input id="feed-url" type="text" placeholder="https://en.wikipedia.org/wiki/…"></div>
+          <div class="row">
+            <button id="btn-feed" class="primary">Fetch &amp; clean</button>
+            <button id="btn-feed-save" class="ghost" disabled>Save to brain-food.txt</button>
+            <span id="feed-status" class="dim"></span>
+          </div>
+          <div class="field"><label>or paste text</label><textarea id="feed-paste" rows="4" placeholder="Paste Gemini's text here…"></textarea></div>
+          <div class="row">
+            <button id="btn-feed-paste" class="ghost">Use pasted text</button>
+          </div>
+          <pre id="feed-preview" class="dim" style="white-space:pre-wrap; max-height:180px; overflow:auto"></pre>
+        </div>
+      </div>
+
+      <!-- REVERSEL AB -->
+      <div class="panel" id="panel-re">
+        <div class="card wide">
+          <h3>🔧 ReverseLab — ARM7TDMI disassembler</h3>
+          <div class="dsinfo">The CPU in the Game Boy Advance. Paste raw hex (or tap the demo) and get a real disassembly — addresses, bytes, mnemonics — plus the control-flow graph below.</div>
+          <div class="row">
+            <div class="seg" id="re-modeseg">
+              <button data-rmode="arm" class="active">ARM 32-bit</button>
+              <button data-rmode="thumb">Thumb 16-bit</button>
+            </div>
+            <div class="field" style="min-width:130px"><label>Base address</label>
+              <input id="re-base" type="text" value="08000000" style="font-family:monospace"></div>
+          </div>
+          <div class="field"><label>Hex bytes</label>
+            <textarea id="re-hex" rows="3" style="font-family:monospace" placeholder="E3A00001 E0812000 E3510005 …"></textarea></div>
+          <div class="row">
+            <button id="btn-re-disasm" class="primary">Disassemble</button>
+            <button id="btn-re-demo" class="ghost">Load function demo</button>
+          </div>
+          <div id="re-listing" class="console-out" style="max-height:260px"></div>
+        </div>
+        <div class="card wide">
+          <h3>Control-flow graph</h3>
+          <canvas id="re-cfg" style="width:100%;height:280px"></canvas>
+          <div class="dsinfo" id="re-cfginfo">Disassemble something with branches to see its graph. Tap a block to inspect its instructions.</div>
+        </div>
+        <div class="card wide">
+          <h3>🤖 Teach the AI to reverse engineer</h3>
+          <div class="dsinfo">Real RE tools learn instruction shapes from data. Two demos:</div>
+          <div class="row">
+            <button id="btn-re-train" class="primary">📊 Train instruction classifier</button>
+            <button id="btn-re-bound" class="ghost">🎯 Function-boundary demo</button>
+          </div>
+          <div class="dsinfo">The classifier trains on 2000 synthetic ARM words (5 classes) in the Train tab — watch the accuracy. The boundary demo plants real function prologues in a byte stream and scores a signature scan against ground truth, the way the pros bootstrap before ML takes over.</div>
+        </div>
+      </div>
+
+      <!-- QUANTUMVM -->
+      <div class="panel" id="panel-q">
+        <div class="row" style="margin-bottom:10px">
+          <button id="btn-qmode-vm" class="primary" style="flex:1">⚛️ QuantumVM</button>
+          <button id="btn-qmode-nexus" style="flex:1">🌀 Nexus Core</button>
+        </div>
+        <div id="qvm-view">
+        <div class="card wide">
+          <h3>⚛️ QuantumVM — a virtual quantum computer</h3>
+          <div class="dsinfo">A <b>classical simulation</b> of quantum mechanics running on your phone's CPU — not quantum hardware, but the real math: state vectors, superposition, entanglement, measurement collapse. Qubit cap is 8 (256 amplitudes) because every qubit doubles the numbers — the 2<sup>N</sup> cost, made visible.</div>
+          <div class="row">
+            <div class="field" style="min-width:110px"><label>Qubits (1–8)</label>
+              <select id="q-qubits">
+                <option>1</option><option selected>2</option><option>3</option><option>4</option>
+                <option>5</option><option>6</option><option>7</option><option>8</option>
+              </select></div>
+            <div class="field" style="flex:1;min-width:170px"><label>Circuit preset</label>
+              <select id="q-preset">
+                <option value="bell">Bell pair — two qubits, one fate</option>
+                <option value="ghz3">GHZ-3 — three-way entanglement</option>
+                <option value="coin">Superposition coin flip</option>
+                <option value="teleport">🌀 Quantum teleportation walkthrough</option>
+              </select></div>
+          </div>
+          <div class="field"><label>Quantum assembly — one gate per line (# comments ok)</label>
+            <textarea id="q-src" rows="6" style="font-family:monospace" spellcheck="false" placeholder="H 0&#10;CNOT 0 1&#10;RX 0 pi/2&#10;MEASURE 0"></textarea></div>
+          <div class="dsinfo" style="margin-bottom:8px">Gates: H X Y Z S T · RX/RY/RZ q θ · CNOT c t · CZ c t · SWAP a b · MEASURE q · RESET q — qubit 0 is the rightmost bit.</div>
+          <div class="row">
+            <button id="btn-q-run" class="primary">▶ Run</button>
+            <button id="btn-q-step">Step ▸</button>
+            <button id="btn-q-reset" class="ghost">Reset</button>
+          </div>
+          <div class="dsinfo" id="q-narrate"></div>
+          <div class="dsinfo" id="q-cur" style="margin-top:6px"></div>
+        </div>
+        <div class="card wide">
+          <h3>State inspector</h3>
+          <div id="q-state" class="console-out" style="max-height:260px"></div>
+        </div>
+        <div class="card wide">
+          <h3>Measurement — shots</h3>
+          <div class="row">
+            <button id="btn-q-shots" class="primary">🎲 Run shots</button>
+            <div class="field" style="min-width:100px"><label>Shots</label>
+              <input id="q-shots-n" type="number" value="1000" min="10" max="10000"></div>
+          </div>
+          <div id="q-hist"><div class="dsinfo">no shots yet</div></div>
+        </div>
+        <div class="card wide">
+          <h3>Entanglement</h3>
+          <div class="dsinfo">Purity is the honest indicator: 1.00 = not entangled, 0.50 = maximally entangled with the rest of the system. An entangled qubit has no state of its own — that's what the numbers are telling you.</div>
+          <div id="q-ent" style="margin-top:6px"></div>
+        </div>
+        <div class="card wide">
+          <h3>Bloch sphere</h3>
+          <div class="row">
+            <div class="field" style="min-width:110px"><label>Qubit</label><select id="q-bloch-q"></select></div>
+          </div>
+          <canvas id="q-bloch" style="width:100%;height:260px"></canvas>
+          <div class="dsinfo" id="q-blochinfo"></div>
+        </div>
+        </div><!-- /#qvm-view -->
+        <div id="nexus-view" style="display:none">
+          <div class="card wide">
+            <h3>🌀 Quantum Nexus Core</h3>
+            <div class="dsinfo">Ahkeem's self-modifying AI architecture — named by him. A <b>classical simulation</b> on your phone's CPU: an ErrorLoop core that rewrites itself as it thinks, yes/no held as one qubit until it decides, frozen snapshots at every generation boundary, evolution that keeps the lowest error. This is the <b>visual twin of preset 16</b> (Spiking tab) — same math, watchable.</div>
+          </div>
+          <div class="card wide">
+            <h3>Controls</h3>
+            <div class="row">
+              <button id="btn-nx-run" class="primary">▶ Run</button>
+              <button id="btn-nx-pause">⏸ Pause</button>
+              <button id="btn-nx-step">Step ▸</button>
+              <button id="btn-nx-reset" class="ghost">Reset</button>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <div class="field" style="flex:1"><label>Speed <span id="nx-speed-val">6</span>×</label>
+                <input id="nx-speed" type="range" min="1" max="20" value="6" style="width:100%"></div>
+              <div class="field" style="min-width:110px"><label>Generations</label>
+                <input id="nx-gens" type="number" value="8" min="1" max="20"></div>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <button id="btn-nx-lineage" class="primary" style="min-height:48px">🧬 Lineage ON</button>
+              <div class="field" style="min-width:110px"><label>Decay ε</label>
+                <input id="nx-eps" type="number" value="0.01" min="0.001" max="0.1" step="0.005"></div>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <div class="field" style="flex:1"><label>Stack depth (1–6)</label>
+                <input id="nx-depth" type="number" value="3" min="1" max="6" style="min-height:48px"></div>
+              <div class="field" style="flex:1"><label>Nonlinearity</label>
+                <select id="nx-act" style="min-height:48px">
+                  <option value="tanh" selected>tanh (safe default)</option>
+                  <option value="relu">ReLU (volatile)</option>
+                  <option value="sigmoid">sigmoid (slow)</option>
+                </select></div>
+            </div>
+            <div class="dsinfo">v39 Deep Core — the loop is now a <b>stack</b>: layer 0 takes the input signal, each higher layer takes the fresh state of the layer below, with a differentiable nonlinearity between them. The decoder error tunes <b>every</b> layer. Depth 1 reproduces the exact reference behavior; depth 3 is the new default.</div>
+            <div class="row" style="margin-top:8px">
+              <button id="btn-nx-continue" class="primary" style="min-height:48px;flex:1">🧬 Continue lineage</button>
+              <button id="btn-nx-exportchamp" class="ghost" style="min-height:48px">⤓ champion JSON</button>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <button id="btn-nx-exportjarvis" class="primary" style="min-height:48px;flex:1">📦 Export for J.A.R.V.I.S.</button>
+            </div>
+            <div class="dsinfo" id="nx-jarvisinfo">One tap bundles everything — champions, ledger, ghosts, run history, shock + auto-pilot + spawn logs — into a single JSON file in Downloads. Share it into chat and J.A.R.V.I.S. sees what you see.</div>
+            <div class="dsinfo" id="nx-champinfo">No saved champion yet — run the Core once and it will remember.</div>
+            <div class="dsinfo">Lineage mode: when the error decay plateaus (ΔE &lt; ε), the exact decay point is captured, verified by the parent, and the child generation is <b>entangled</b> to it — seeded from the certified record, hash-linked in the ledger. <b>Continue lineage</b> resumes evolution from the saved champion instead of starting over — the Core now remembers.</div>
+            <div class="dsinfo" id="nx-status">Tap ▶ Run — generation 0 starts thinking.</div>
+          </div>
+          <div class="card wide">
+            <h3>∞ Eternal Core</h3>
+            <div class="dsinfo">The Core evolves <b>itself</b>, in chunks, forever — no generation cap. Each cycle runs a few generations, saves the champion (<b>kill-safe</b>: a dead phone loses nothing), then yields so ⏹ <b>STOP</b> is always reachable. Background the app and it drops to <b>◐ LOW-POWER</b> — AI-only, 1 gen/cycle, no rendering, slowest cadence. Below 20% battery (not charging) it goes to the <b>deepest</b> low-power tier but <b>never stops on its own</b> — only your ⏹ STOP button ends it. If the phone dies mid-eternal, reopening the app <b>auto-resumes</b> from the last saved champion.</div>
+            <div class="row">
+              <button id="btn-nx-eternal" class="primary" style="min-height:48px;flex:1">∞ Start eternal</button>
+              <button id="btn-nx-estop" class="ghost" style="min-height:48px;flex:1" disabled>⏹ STOP</button>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <div class="field" style="flex:1"><label>Gens / cycle</label>
+                <input id="nx-chunk" type="number" value="4" min="1" max="16"></div>
+              <div class="field" style="flex:1"><label>Low-power sleep (sec)</label>
+                <input id="nx-lowsleep" type="number" value="30" min="5" max="300"></div>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <label class="dsinfo" style="display:flex;align-items:center;gap:8px;min-height:48px;margin:0">
+                <input id="nx-eternal-resume" type="checkbox" checked style="width:44px;height:44px;flex:none">
+                <span>Resume saved champion on start (uncheck = fresh from seed)</span>
+              </label>
+            </div>
+            <div class="dsinfo" id="nx-eternalinfo">Eternal mode is OFF.</div>
+            <div class="dsinfo" id="nx-eternstats"></div>
+            <div class="dsinfo">🔋 For true background evolution: <b>Settings → Apps → Neural Lab → Battery → Unrestricted</b> — otherwise Android may freeze the app when it's backgrounded. Either way the champion auto-saves every cycle, so nothing is ever lost. This build runs eternal as a classical in-app loop (no native background service) — the ledger records every mode switch honestly.</div>
+          </div>
+          <div class="card wide">
+            <h3>🛜 Nexus Mesh — opt-in distributed evolution</h3>
+            <div class="dsinfo">Ahkeem's consent-based signal. <b>Nothing enters your Core unless you tap ACCEPT</b> — that gate is the whole point. Export your champion as a signed payload, move it to another device (Bluetooth / Nearby Share / Files → Downloads), and the other side <b>chooses</b> to accept it. On accept, your champion and the challenger fight identical validation episodes — the winner takes the Core — or cross-breed into a child of both. The swarm simulator below proves the gossip dynamics with virtual nodes before real devices touch it.</div>
+            <h3 style="margin-top:10px">Champion exchange</h3>
+            <div class="row">
+              <div class="field" style="flex:1"><label>Device label (stamped on your payload)</label>
+                <input id="nx-meshlabel" type="text" value="Ahkeem's A17" maxlength="64"></div>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <button id="btn-nx-meshexport" class="primary" style="min-height:48px;flex:1">⤴ Export mesh payload</button>
+              <button id="btn-nx-meshimport" class="ghost" style="min-height:48px;flex:1">⤵ Import payload…</button>
+              <input type="file" id="nx-meshfile" accept=".json,application/json" style="display:none">
+            </div>
+            <div id="nx-challenger" style="display:none;margin-top:8px"></div>
+            <div class="dsinfo" id="nx-meshstatus">mesh ready — export a payload, or start the swarm below.</div>
+            <h3 style="margin-top:10px">Swarm simulator</h3>
+            <div class="dsinfo">Virtual nodes evolve the Core independently with different seeds, then gossip: champions migrate to weaker nodes, and the swarm's best error never rises. Each node runs eternal-style — no generation cap. Amber flashes are migrations.</div>
+            <div class="row">
+              <button id="btn-nx-meshstart" class="primary" style="min-height:48px">▶ Start swarm</button>
+              <button id="btn-nx-meshstop" class="ghost" style="min-height:48px">⏹ Stop</button>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <div class="field" style="flex:1"><label>Nodes (2–8)</label>
+                <input id="nx-meshcount" type="number" value="4" min="2" max="8"></div>
+              <div class="field" style="flex:1"><label>Gossip every K gens</label>
+                <input id="nx-meshgossip" type="number" value="4" min="1" max="20"></div>
+            </div>
+            <canvas id="nx-mesh" style="width:100%;height:220px"></canvas>
+            <div id="nx-meshnodes" style="margin-top:8px"></div>
+          </div>
+          <div class="card wide">
+            <h3>🕳 Event Horizon — black-hole neurons</h3>
+            <div class="dsinfo">Ahkeem's information-paradox experiment — labeled honestly as a <b>paradox-inspired classical simulation</b>, not quantum gravity. The top layer's neurons <b>collide</b> through a learnable gravity matrix G and compress M→K toward the singularity; exterior partner neurons <b>never fall in</b> but stay correlated through an <b>entanglement-inspired link</b> (classical correlation modeled on entanglement — true entanglement needs quantum hardware). With the link ON the exterior whispers back and evolution must preserve the correlation — then watch how the black hole's <b>structure</b> changes. Compare ON vs OFF to see it.</div>
+            <div class="row">
+              <button id="btn-nx-horizon" class="ghost" style="min-height:48px;flex:1">🕳 Horizon OFF</button>
+              <button id="btn-nx-hzent" class="primary" data-on="1" style="min-height:48px;flex:1;display:none">🔗 Entanglement-inspired link ON</button>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <div class="field" style="flex:1"><label>Infall neurons M</label>
+                <input id="nx-hzm" type="number" value="6" min="2" max="6" style="min-height:48px"></div>
+              <div class="field" style="flex:1"><label>Singularity outputs K</label>
+                <input id="nx-hzk" type="number" value="2" min="1" max="5" style="min-height:48px"></div>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <button id="btn-nx-hzcompare" class="primary" style="min-height:48px;flex:1">⚖ Compare ON vs OFF</button>
+            </div>
+            <div class="dsinfo" id="nx-hzinfo">horizon OFF.</div>
+            <canvas id="nx-horizon" style="width:100%;height:230px"></canvas>
+            <div id="nx-hzcmp" style="margin-top:8px"></div>
+          </div>
+          <div class="card wide">
+            <h3>👻 Ghost snapshots — pre-compression copies</h3>
+            <div class="dsinfo">Ahkeem's workaround for no quantum entanglement: instead of spooky correlation, an <b>exact copy</b>. Before the horizon compresses an infalling neuron, the engine freezes its pre-compression state bit-for-bit — a ghost image, checksum-sealed (plain JSON, not .vmdk/.vhd — a disk-container format would wrap a few KB of state in overhead for zero benefit). One ghost per generation, mid-episode. Tap one to inspect it, re-ingest it into <b>layer 3</b> by hand, or switch on the feedback loop and let every generation's ghost teach the Core — damped, so the loop can't run away.</div>
+            <div class="row">
+              <button id="btn-nx-ghostfb" class="ghost" style="min-height:48px;flex:1">👻 Layer-3 feedback OFF</button>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <div class="field" style="flex:1"><label>Feedback damping gain (0–0.5)</label>
+                <input id="nx-ghostgain" type="number" value="0.15" min="0" max="0.5" step="0.05" style="min-height:48px"></div>
+            </div>
+            <div id="nx-ghosts" style="margin-top:8px"></div>
+            <div id="nx-ghostinfo" style="margin-top:8px"></div>
+          </div>
+          <div class="card wide">
+            <h3>⚛ Antimatter — the ghost-built inner superloop</h3>
+            <div class="dsinfo">Ahkeem's design, honestly labeled: a <b>classical simulation</b>, not quantum anything. Recover a ghost and the engine <b>crawls the local ghost archive</b> (similarity hops, ghost→ghost — no network, nothing leaves the phone) for relatives in the erased state, <b>stacks</b> them in a bounded recovery container, then rolls a <b>seeded stochastic spawn decision</b> (match → amplitude → p=|a|², same math as the qubit belief — stochastic, not quantum collapse). If it fires, a checksum-sealed <b>recipe</b> (JSON, never generated code — dynamic code execution is a security boundary) composes a small recurrent <b>inner superloop</b> from the ghost states. It reads every layer, updates only itself, and publishes its state where the Core can read it — <b>write-protection is enforced both ways</b>: neither side can rewrite the other's weights, only learn and copy.</div>
+            <div class="row">
+              <button id="btn-nx-am" class="ghost" style="min-height:48px;flex:1">⚛ Antimatter OFF</button>
+              <button id="btn-nx-amspawn" class="primary" data-on="1" style="min-height:48px;flex:1">⚛ Auto-spawn ON</button>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <div class="field" style="flex:1"><label>Publish gain (0–0.3)</label>
+                <input id="nx-amgain" type="number" value="0.1" min="0" max="0.3" step="0.05" style="min-height:48px"></div>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <button id="btn-nx-amrecover" class="primary" style="min-height:48px;flex:1">🕷 Recover selected ghost → crawl the archive</button>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <button id="btn-nx-amresid" class="primary" style="min-height:48px;flex:1">🧬 Residual publish ON</button>
+              <button id="btn-nx-amsigninv" class="ghost" style="min-height:48px;flex:1">➖ Sign inversion OFF</button>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <button id="btn-nx-amzerosum" class="primary" style="min-height:48px;flex:1">🟰 Zero-sum pairing ON</button>
+              <button id="btn-nx-amcompare" class="ghost" style="min-height:48px;flex:1">📊 Compare residual vs raw</button>
+            </div>
+            <div class="dsinfo" id="nx-amdiv">Zero-sum divergence meter: no live inner loop yet.</div>
+            <div class="dsinfo" id="nx-amcompare"></div>
+            <div class="dsinfo" id="nx-aminfo">No ghosts recovered yet — select a ghost above, then recover it.</div>
+            <canvas id="nx-antimatter" style="width:100%;height:230px"></canvas>
+            <h4 style="margin:10px 0 4px">🕷 Crawler activity</h4>
+            <div id="nx-amcrawl" style="max-height:180px;overflow-y:auto"><div class="dsinfo">The crawler hops ghost→ghost along similarity edges. Its hops log here.</div></div>
+            <h4 style="margin:10px 0 4px">📦 Recovery container</h4>
+            <div id="nx-amcontainer"><div class="dsinfo">Recovered ghost states stack here (bounded replay bank — novelty eviction when full).</div></div>
+            <h4 style="margin:10px 0 4px">🎲 Spawn log</h4>
+            <div id="nx-amspawnlog" style="max-height:180px;overflow-y:auto"><div class="dsinfo">Every spawn decision is logged with its sampled probability.</div></div>
+          </div>
+          <div class="card wide">
+            <h3>⇄ Inversion — bidirectional mode (encoding ↔ abduction)</h3>
+            <div class="dsinfo"><b>Forward</b> (existing): Layer 1 takes the input, the signal climbs L1 → L2 → L3, and Layer 3 predicts. <b>Reverse</b> (new): the top-layer state is frozen into an <b>immutable ghost</b>, injected as the target condition, and the mismatch e₃ = v<sub>ghost</sub> − h₃ propagates <b>downward</b> through transpose weights (feedback alignment — approximate, honestly labeled). The reconstruction is read from <b>Layer 1</b>. Forward encodes, reverse decodes — this is the future <b>cipher-puzzle machinery</b> for the CTF Lab. Classical simulation throughout.</div>
+            <div class="row">
+              <button id="btn-nx-invert" class="primary" style="min-height:48px;flex:1">⇄ Invert now</button>
+              <button id="btn-nx-invauto" class="ghost" style="min-height:48px;flex:1">Auto-invert on '>' OFF</button>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <div class="field" style="flex:1"><label>Reverse gain γ (0.05–1)</label>
+                <input id="nx-invgamma" type="number" value="0.5" min="0.05" max="1" step="0.05" style="min-height:48px"></div>
+            </div>
+            <div class="dsinfo" id="nx-invdir">→ <b>forward</b> (encoding) — Layer 1 takes input, Layer 3 predicts.</div>
+            <div class="dsinfo" id="nx-invinfo">No inversion run yet — tap ⇄ Invert now to freeze a ghost and roll the reverse pass.</div>
+          </div>
+          <div class="card wide">
+            <h3>⚡ Shock Lab — out-of-distribution generalization</h3>
+            <div class="dsinfo">Gemini's falsifiability experiment: a network can fake intelligence by memorizing the drifting signal. The Shock Lab holds out a <b>validation window</b> the training episodes never see, then hits the Core with a <b>seeded regime shock</b> — and measures whether ghost recovery adapts <b>faster</b> than the Core alone. Same seed both arms; the only difference is the feedback toggle. If the ON arm recovers in fewer generations, that's adaptation — not overfitting.</div>
+            <div class="row">
+              <div class="field" style="flex:1"><label>Shock type</label>
+                <select id="nx-shocktype" style="min-height:48px">
+                  <option value="noise" selected>Gaussian noise burst</option>
+                  <option value="freq">Sudden frequency shift</option>
+                  <option value="phase">Phase inversion</option>
+                </select></div>
+              <div class="field" style="flex:1"><label>Shock gens (after)</label>
+                <input id="nx-shockafter" type="number" value="5" min="2" max="10" style="min-height:48px"></div>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <button id="btn-nx-shocktest" class="primary" style="min-height:48px;flex:1">⚡ Run shock experiment</button>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <label class="dsinfo" style="display:flex;align-items:center;gap:8px;min-height:48px;margin:0">
+                <input id="nx-val" type="checkbox" style="width:44px;height:44px;flex:none">
+                <span>Held-out validation window on normal runs (pristine, never trained on — used by multi-objective fitness)</span>
+              </label>
+            </div>
+            <div id="nx-shockres" style="margin-top:8px"><div class="dsinfo">No shock test yet — the experiment runs both arms and reports generations-to-recover + the post-shock error integral.</div></div>
+          </div>
+          <div class="card wide">
+            <h3>🎛 Gauntlet auto-pilot — the decay law as a switch</h3>
+            <div class="dsinfo">Your power law (E ≈ 0.465·gen<sup>−0.43</sup>) isn't just an observation anymore — it's a <b>control trigger</b>. When the rolling error slope over K generations flattens below threshold, the Core manages its own lifecycle: <b>(a)</b> a mutation burst (exploration), <b>(b)</b> a horizon compression pass that mints ghosts from the most redundant units, <b>(c)</b> a lowered crawler spawn threshold so a new inner loop can be born. Every trigger is hash-logged in the ledger.</div>
+            <div class="row">
+              <button id="btn-nx-autopilot" class="ghost" style="min-height:48px;flex:1">🎛 Auto-pilot OFF</button>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <div class="field" style="flex:1"><label>Rolling window K</label>
+                <input id="nx-apk" type="number" value="3" min="2" max="8" style="min-height:48px"></div>
+              <div class="field" style="flex:1"><label>Slope threshold</label>
+                <input id="nx-apthresh" type="number" value="0.005" min="0.001" max="0.05" step="0.001" style="min-height:48px"></div>
+            </div>
+            <div class="dsinfo" id="nx-apinfo">Auto-pilot OFF — slope monitor idle.</div>
+            <h3 style="margin-top:10px">⚖ Multi-objective fitness</h3>
+            <div class="dsinfo">Single-metric evolution breeds fragile cheaters. Selection now scores <b>F = w₁·(1−Error) + w₂·Fidelity − w₃·Complexity</b> — accuracy (validation error when the shock lab is armed), the entanglement-inspired link's fidelity, minus a complexity penalty (weight norms + layer saturation) that keeps the inner loops lean. The curve still plots raw error, honestly.</div>
+            <div class="row">
+              <button id="btn-nx-mo" class="ghost" style="min-height:48px;flex:1">⚖ Multi-objective OFF</button>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <div class="field" style="flex:1"><label>w₁ accuracy</label>
+                <input id="nx-mow1" type="number" value="0.6" min="0" max="1" step="0.05" style="min-height:48px"></div>
+              <div class="field" style="flex:1"><label>w₂ fidelity</label>
+                <input id="nx-mow2" type="number" value="0.25" min="0" max="1" step="0.05" style="min-height:48px"></div>
+              <div class="field" style="flex:1"><label>w₃ complexity</label>
+                <input id="nx-mow3" type="number" value="0.15" min="0" max="1" step="0.05" style="min-height:48px"></div>
+            </div>
+            <div class="dsinfo" id="nx-finfo">Multi-objective OFF — selection is raw error (+ fidelity pressure when the link is on).</div>
+            <h3 style="margin-top:10px">🛡 Numerical stability</h3>
+            <div class="dsinfo">LayerNorm after every recurrent update and every ghost/antimatter state update, plus the inner loop's recurrent matrix bounded to spectral radius 0.9 — a <b>fading-memory reservoir</b> (echo-state principle), never an oscillating amplifier.</div>
+            <div class="row">
+              <button id="btn-nx-stab" class="ghost" style="min-height:48px;flex:1">🛡 Stability guard OFF</button>
+            </div>
+          </div>
+          <div class="card wide">
+            <h3>🔤 Char-RNN — the tiny language milestone</h3>
+            <div class="dsinfo">Gemini's milestone, at your phone's scale: a <b>character-level</b> next-char model (~7K params — thousands, not millions). It trains on the text below — the Core's own story ships as the default; <b>paste your own notes or thesis</b> to teach it your voice. The lifecycle rides along: the <b>horizon compresses recurring activations</b> through a bottleneck, and the <b>crawler retrieves past contexts</b> as damped priors for rare tokens. Classical simulation, start to finish.</div>
+            <div class="field"><label>Training text (paste your own, or keep the default)</label>
+              <textarea id="nx-chartext" rows="6" style="width:100%;font-family:monospace"></textarea></div>
+            <div class="row" style="margin-top:8px">
+              <div class="field" style="flex:1"><label>Epochs</label>
+                <input id="nx-charepochs" type="number" value="4" min="1" max="20" style="min-height:48px"></div>
+              <div class="field" style="flex:1"><label>Learning rate</label>
+                <input id="nx-charlr" type="number" value="0.05" min="0.005" max="0.5" step="0.005" style="min-height:48px"></div>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <div class="field" style="flex:1"><label>Training mode</label>
+                <select id="nx-charmode" style="min-height:48px">
+                  <option value="next" selected>Next-token (causal)</option>
+                  <option value="masked">Masked (BERT-style, via inversion)</option>
+                </select></div>
+              <div class="field" style="flex:1"><label>Mask rate (0.05–0.4)</label>
+                <input id="nx-charmaskrate" type="number" value="0.15" min="0.05" max="0.4" step="0.05" style="min-height:48px"></div>
+            </div>
+            <div class="dsinfo">v45 Masked mode: ~15% of chars are replaced by a learned [MASK] (seeded — same seed, same masks). The model forward-encodes the visible context, freezes each masked position's hidden state as a <b>ghost</b> (uncommitted — no token yet), and reverse-decodes the masked char from the frozen ghost. Loss on masked positions only. Classical throughout — the ghost is a copied state vector, and the RNN is causal (left-context), not true bidirectional BERT.</div>
+            <div class="row" style="margin-top:8px">
+              <button id="btn-nx-chartrain" class="primary" style="min-height:48px;flex:1">🔤 Train char-RNN</button>
+            </div>
+            <canvas id="nx-charcurve" style="width:100%;height:160px;margin-top:8px"></canvas>
+            <div class="dsinfo" id="nx-charinfo">Untrained — train it, then generate.</div>
+            <div class="row" style="margin-top:8px">
+              <div class="field" style="flex:2"><label>Seed prompt</label>
+                <input id="nx-charseed" type="text" value="The Core " style="min-height:48px"></div>
+              <div class="field" style="flex:1"><label>Chars</label>
+                <input id="nx-charn" type="number" value="120" min="20" max="400" style="min-height:48px"></div>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <button id="btn-nx-chargen" class="primary" style="min-height:48px;flex:1" disabled>✍ Generate</button>
+            </div>
+            <div class="dsinfo" id="nx-charout" style="margin-top:8px;white-space:pre-wrap;font-family:monospace"></div>
+          </div>
+          <div class="card wide">
+            <h3>⚛ Atomic — the periodic-table network</h3>
+            <div class="dsinfo">Your sequencing call: <b>matter before language</b> — the atoms are the world words will later point to. 118 elements ship as bundled data (standard reference values; unknowns stay null, never faked). Honest frame, stated up front: the table <b>encodes known physics</b> — the network rediscovers the periodic law from data (trends, clusters, group behavior). It does <b>not</b> discover new physics. Classical simulation throughout.</div>
+            <div class="row" style="margin-top:8px">
+              <div class="field" style="flex:1"><label>Task</label>
+                <select id="nx-atomtask" style="min-height:48px">
+                  <option value="predict" selected>Property prediction</option>
+                  <option value="masked">Masked-property reconstruction</option>
+                  <option value="embed">Element embeddings + map</option>
+                </select></div>
+              <div class="field" style="flex:1"><label>Target property</label>
+                <select id="nx-atomprop" style="min-height:48px">
+                  <option value="en" selected>Electronegativity (Pauling)</option>
+                  <option value="ie">Ionization energy (eV)</option>
+                  <option value="radius">Atomic radius (pm)</option>
+                </select></div>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <div class="field" style="flex:1"><label>Epochs</label>
+                <input id="nx-atomepochs" type="number" value="300" min="50" max="1200" step="50" style="min-height:48px"></div>
+              <div class="field" style="flex:1"><label>Learning rate</label>
+                <input id="nx-atomlr" type="number" value="0.05" min="0.005" max="0.5" step="0.005" style="min-height:48px"></div>
+            </div>
+            <div class="dsinfo"><b>Predict:</b> tiny MLP learns a property from the element's <i>other</i> properties — split by element (held-out elements it never saw), must beat a mean-baseline. <b>Masked:</b> the v45 ghost machinery on atoms — properties randomly hidden, the hidden layer freezes as an uncommitted <b>ghost</b>, the output reverse-decodes the masked value. <b>Embeddings:</b> a learned 8-dim vector per element (autoencoder bottleneck — never sees Z, group, period, or category labels), PCA-projected to 2D. If the groups huddle, the network found the periodic law on its own.</div>
+            <div class="row" style="margin-top:8px">
+              <button id="btn-nx-atomtrain" class="primary" style="min-height:48px;flex:1">⚛ Train on the elements</button>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <button id="btn-nx-atomscan" class="ghost" style="min-height:48px;flex:1">📊 Scan all properties vs baseline</button>
+            </div>
+            <canvas id="nx-atomcurve" style="width:100%;height:160px;margin-top:8px"></canvas>
+            <div class="dsinfo" id="nx-atominfo">Untrained — pick a task and train.</div>
+            <div class="dsinfo" id="nx-atomtable" style="margin-top:8px;font-family:monospace;white-space:pre-wrap"></div>
+            <canvas id="nx-atommap" style="width:100%;height:300px;margin-top:8px"></canvas>
+            <div class="dsinfo" id="nx-atommapinfo">The element map draws here after the embeddings task — one dot per element, colored by category. Watch the alkalis huddle left and the noble gases hold the high-ionization right.</div>
+          </div>
+          <div class="card wide">
+            <h3>The core, writing itself</h3>
+            <canvas id="nx-think"></canvas>
+            <div class="dsinfo">Top-layer weight matrix (6×6) + <b>per-layer</b> hidden-state strips (L0 takes the input, higher layers take the layer below). Warm = positive, cool = negative.</div>
+          </div>
+          <div class="card wide">
+            <h3>Deep stack — per-layer prediction errors</h3>
+            <canvas id="nx-layerpe"></canvas>
+            <div class="dsinfo" id="nx-layerpeinfo">Run the Core with stack depth ≥ 2 — each layer's prediction error draws here.</div>
+          </div>
+          <div class="card wide">
+            <h3>Yes / No — both at once, until it decides</h3>
+            <canvas id="nx-belief"></canvas>
+            <div class="dsinfo" id="nx-beliefinfo">p(yes) = 0.500 — one qubit holds both answers; decoder evidence rotates it.</div>
+          </div>
+          <div class="card wide">
+            <h3>The snapshot moment</h3>
+            <div class="row">
+              <div style="flex:1;min-width:0"><div class="dsinfo" style="text-align:center">🔥 live — still changing</div><canvas id="nx-live"></canvas></div>
+              <div style="flex:1;min-width:0"><div class="dsinfo" style="text-align:center">❄️ frozen snapshot</div><canvas id="nx-frozen"></canvas></div>
+            </div>
+            <div class="dsinfo" id="nx-snapinfo">No snapshot yet — start a run.</div>
+          </div>
+          <div class="card wide">
+            <h3>Evolution — the error falls</h3>
+            <canvas id="nx-evo"></canvas>
+            <div class="dsinfo" id="nx-evoinfo">No generations yet.</div>
+          </div>
+          <div class="card wide">
+            <h3>🧬 Decay point &amp; lineage</h3>
+            <div class="dsinfo" id="nx-decayinfo">ΔE last gen: n/a · ε = 0.01 · decay point: not reached · lineage: ON 🧬</div>
+            <div id="nx-pair" style="margin:8px 0"><div class="dsinfo">No entangled pair yet.</div></div>
+            <h3 style="margin-top:10px">Lineage ledger</h3>
+            <div class="dsinfo">Every entangled handoff is hash-linked here — parent decay signature ⟷ child genesis. Measure the parent's decay point, know the child's starting point.</div>
+            <div id="nx-ledger" style="max-height:260px;overflow-y:auto"><div class="dsinfo">No entangled handoffs yet — run with 🧬 Lineage on and let the decay point fire.</div></div>
+          </div>
+          <div class="card wide">
+            <h3>📂 Run history — nexus-runs</h3>
+            <div class="dsinfo">Every finished run asks <b>Save this run?</b> first — nothing is written unless you tap <b>Save</b>. Saved runs live on this phone (newest first). Tap a run to inspect it, export it as .json + .txt to Downloads, or delete it.</div>
+            <div id="nx-history"></div>
+          </div>
+        </div><!-- /#nexus-view -->
+      </div>
+
+      <!-- OBSERVER -->
+      <div class="panel" id="panel-observer">
+        <div class="card wide" id="obs-setup-card">
+          <h3>👁 Observer — eyes, no hands</h3>
+          <div class="dsinfo">The first piece of the agent loop: the observer watches your screen and narrates what it sees, what you're probably doing, and what it <i>would</i> do. It cannot tap or change anything — the action layer doesn't exist yet. Your 👍/👎 votes become its training data.</div>
+          <div class="row">
+            <span id="obs-svc-state" class="dim">checking service…</span>
+          </div>
+          <div class="row">
+            <button id="obs-open-settings" class="primary">Open Accessibility Settings</button>
+            <button id="obs-refresh" class="ghost">Refresh status</button>
+          </div>
+          <div class="dsinfo">Tap the button, find <b>Neural Lab Observer</b> in the list, and turn it on. That's your tap — the observer can never do it for you.</div>
+          <div class="field"><label>Gemini API key <span class="dim">(free from Google AI Studio, stored only on this phone)</span></label><input id="obs-key" type="password" placeholder="paste key…" autocomplete="off"></div>
+          <div class="field"><label>Model</label><input id="obs-model" type="text" value="gemini-2.0-flash"></div>
+          <div class="row">
+            <label class="mini"><input id="obs-on" type="checkbox"> observer on</label>
+            <span id="obs-status" class="dim"></span>
+          </div>
+          <div class="dsinfo">🔒 Screen text is sent to the Gemini API for narration. Read-only: the observer cannot tap or change anything.</div>
+        </div>
+        <div class="card wide" id="obs-feed-card">
+          <h3>Narrations</h3>
+          <div id="obs-feed"></div>
+        </div>
+      </div>
+
+      <!-- CRAWLER -->
+      <div class="panel" id="panel-crawler">
+        <div class="card wide">
+          <h3>🕷 Crawler — the AI reads the web</h3>
+          <div class="dsinfo">Point it at a page and it follows links, reads the text, and feeds <b>brain-food.txt</b> — the corpus your next Colab training run eats. Watch it browse below. New text is de-duplicated against the existing corpus automatically.</div>
+          <div class="field"><label>Start URL</label><input id="crawl-url" type="text" value="https://en.wikipedia.org/wiki/Black_hole" placeholder="https://…" autocapitalize="off" spellcheck="false"></div>
+          <div class="row">
+            <div class="field"><label>Max depth (1–3)</label><input id="crawl-depth" type="number" min="1" max="3" value="2"></div>
+            <div class="field"><label>Max pages</label><input id="crawl-pages" type="number" min="1" max="200" value="50"></div>
+          </div>
+          <div class="field"><label>Keywords <span class="dim">(comma-separated, optional — only keeps pages containing one)</span></label><input id="crawl-keys" type="text" placeholder="black hole, relativity" autocapitalize="off" spellcheck="false"></div>
+          <div class="row">
+            <label class="mini"><input id="crawl-samedomain" type="checkbox" checked> same site only</label>
+            <label class="mini"><input id="crawl-wifionly" type="checkbox" checked> Wi-Fi only</label>
+          </div>
+          <div class="row">
+            <button id="btn-crawl-start" class="primary">🕷 Crawl</button>
+            <button id="btn-crawl-stop" class="ghost" disabled>Stop</button>
+          </div>
+        </div>
+        <div class="card wide">
+          <h3>👀 Now browsing</h3>
+          <div id="crawl-cururl" class="dim">idle</div>
+          <iframe id="crawl-frame" title="crawler browser view" style="width:100%;height:300px;border:1px solid #333;border-radius:8px;background:#111;margin-top:6px;"></iframe>
+          <div class="dsinfo">If a site refuses to show here, the crawler still reads it — some sites block embedding.</div>
+          <div id="crawl-preview" class="dim" style="white-space:pre-wrap;max-height:120px;overflow:hidden;"></div>
+        </div>
+        <div class="card wide">
+          <h3>📊 Progress</h3>
+          <div id="crawl-stats" class="dim">idle</div>
+          <div id="crawl-log" style="max-height:180px;overflow-y:auto;font-size:13px;margin-top:6px;"></div>
+        </div>
+        <div class="card wide" id="crawl-ready-card">
+          <h3>🎓 Training-ready</h3>
+          <div id="train-ready-stats" class="dim">No corpus data yet — run a crawl or use the Brain Feeder.</div>
+          <div class="dsinfo">The Colab training notebook scans <b>every .txt in your Drive's top level</b> — brain-food.txt rides along automatically once uploaded.</div>
+          <div class="dsinfo">Remaining steps (your taps): 1) in your Files app, upload <b>Documents/NeuralLab/brain-food.txt</b> to Google Drive top level. 2) In Colab, open the training notebook and <b>Run all</b> on GPU.</div>
+          <div class="dsinfo">📵 This phone <b>gathers</b> — training happens on Colab, not here. No Drive upload in this build (needs Google sign-in — later).</div>
+        </div>
+      </div>
+
+      <!-- GYM -->
+      <div class="panel" id="panel-gym">
+        <div class="card wide" id="gym-lobby-card">
+          <h3>🎮 Game Gym — the agent plays, the trinity learns</h3>
+          <div class="dsinfo">The agent's first training ground: the puzzle game <b>Untrusted</b>, running in its own arena WebView. The agent perceives the maze through the game's own brain (<i>window.game</i>), reasons with your Gemini key, edits the level's code and moves the player — <b>full-auto</b>, inside the arena only. It can never touch anything else on your phone.</div>
+          <div class="dsinfo">Every attempt is judged: beat the level and the strategy is logged — fail and the <b>whole attempt is sealed as a ghost</b>. Repeat a failed approach and the ghost breaks into <b>molecules</b> that steer the planner away. Spin the same failed edit 3 times and the <b>black hole</b> absorbs the run.</div>
+          <div class="row">
+            <span id="gym-key-state" class="dim">checking key…</span>
+          </div>
+          <div class="row">
+            <button id="gym-open" class="primary">🎮 Open the arena</button>
+            <button id="gym-refresh" class="ghost">Refresh</button>
+          </div>
+          <div class="dsinfo">In the arena: tap <b>▶ Start run</b> and watch it play. <b>■ STOP</b> halts it instantly. Every move is logged with what it did and the game state before/after — review it all below when you come back.</div>
+          <div class="dsinfo">🔒 Game state + your reasoning go to the Gemini API to plan moves. The game itself auto-posts solved levels as GitHub gists — that's the game's own behavior, not ours.</div>
+        </div>
+        <div class="card wide" id="gym-log-card">
+          <h3>Attempt log <span id="gym-counts" class="dim"></span></h3>
+          <div id="gym-log"></div>
+        </div>
+        <div class="card wide" id="gym-ghost-card">
+          <h3>👻 Ghost archive</h3>
+          <div id="gym-ghosts"></div>
+        </div>
+      </div>
+      <div class="panel" id="panel-drive">
+        <div class="card wide" id="drive-auth-card">
+          <h3>💾 Drive Bridge — the Colab bridge</h3>
+          <div class="dsinfo">Your training data goes up, your trained weights come down — no library-computer file juggling. Sign in once with your Google account; the app only ever touches <b>brain-food.txt</b> (upload) and your <b>.pt / .json</b> weight files (download).</div>
+          <div class="row">
+            <span id="drive-auth-state" class="dim">checking…</span>
+          </div>
+          <div class="row">
+            <button id="drive-signin" class="primary" style="min-height:48px">Sign in with Google</button>
+            <button id="drive-signout" class="ghost" style="min-height:48px" hidden>Sign out</button>
+          </div>
+        </div>
+        <div class="card wide" id="drive-upload-card">
+          <h3>⬆ Upload brain-food</h3>
+          <div class="dsinfo">One tap pushes <b>Documents/NeuralLab/brain-food.txt</b> to your Drive root — creates it the first time, overwrites after that. Colab's v7 notebook reads it from there.</div>
+          <div class="row"><span id="drive-local" class="dim"></span></div>
+          <div class="row">
+            <button id="drive-upload" class="primary" style="min-height:48px">⬆ Upload brain-food to Drive</button>
+          </div>
+          <div class="row"><span id="drive-last-upload" class="dim"></span></div>
+        </div>
+        <div class="card wide" id="drive-weights-card">
+          <h3>⬇ Trained weights</h3>
+          <div class="dsinfo">Your Colab saves (<b>first-tongue-v7.pt</b>, <b>.json</b>, …) land at Drive root — download them here into <b>Documents/NeuralLab/weights/</b>, staged for the future phone-deployment work.</div>
+          <div class="row">
+            <button id="drive-refresh-list" class="ghost" style="min-height:48px">🔄 List Drive weights</button>
+          </div>
+          <div id="drive-weights"></div>
+        </div>
+        <div class="card wide">
+          <div class="row"><span id="drive-status" class="dim">ready</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ right properties panel ══ -->
+  <aside id="props">
+    <h3>Properties</h3>
+    <div id="props-body"><div class="dsinfo">Select the Train tab to inspect the model.</div></div>
+  </aside>
+</div>
+
+<!-- ══ bottom status bar ══ -->
+<footer id="statusbar">
+  <span id="st-ready">● ready</span>
+  <span id="st-pad">🎮 no controller</span>
+  <span class="sp"></span>
+  <span id="st-model">model: —</span>
+  <span id="st-epoch">epoch 0</span>
+  <span id="st-fps"></span>
+</footer>
+
+<!-- ══ full-screen Python editor window (Spiking tab) ══ -->
+<div id="spike-editor" hidden>
+  <div class="spike-ed-bar">
+    <button id="btn-spike-back" class="ghost">← Back</button>
+    <span class="spike-ed-title">🐍 Python</span>
+    <button id="btn-spike-run2" class="primary">▶ Run</button>
+  </div>
+  <textarea id="spike-text" spellcheck="false" placeholder="# write Python here — numpy + nengo available"></textarea>
+  <div class="spike-ed-bar bottom">
+    <span class="spike-ed-note">numpy + nengo ready</span>
+    <button id="btn-spike-out2">Output ↓</button>
+  </div>
+</div>
+
+<div id="fps-overlay" hidden></div>
+
+<script src="mlp.js"></script>
+<script src="cnn.js"></script>
+<script src="attention.js"></script>
+<script src="nanograd.js"></script>
+<script src="brain.js"></script>
+<script src="graphview.js"></script>
+<script src="q88.js"></script>
+<script src="c_codegen.js"></script>
+<script src="mcu-sim.js"></script>
+<script src="arm7.js"></script>
+<script src="reverselab.js"></script>
+<script src="quantum.js"></script>
+<script src="nexus-runs.js"></script>
+<script src="nexus.js"></script>
+<script src="nexus-mesh.js"></script>
+<script src="charrnn.js"></script>
+<script src="atomic.js"></script>
+<script src="tongue.js"></script>
+<script src="observer.js"></script>
+<script src="crawler.js"></script>
+<script src="qrbridge.js"></script>
+<script src="gym.js"></script>
+<script src="drive.js"></script>
+<script src="three.min.js"></script>
+<script src="meta-judge.js"></script>
+<script src="terrarium-core.js"></script>
+<script src="terrarium.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

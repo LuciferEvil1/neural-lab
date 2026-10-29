@@ -1,0 +1,5 @@
+*.p12
+*.keystore
+build/
+build*/
+*.apk

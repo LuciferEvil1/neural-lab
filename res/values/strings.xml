@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Neural Lab</string>
+    <string name="observer_service_desc">Neural Lab Observer — read-only screen reader for the AI lab. It watches what is on screen so the lab can narrate it. It cannot tap or change anything.</string>
+</resources>
