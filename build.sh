@@ -1,13 +1,13 @@
 #!/bin/bash
-# Neural Lab v82 APK: v81 + round-2 review fixes (growth ceiling hard bound, one judge fragment per ghost enforced in core, measured learned-state accounting; suite 103).
+# Neural Lab v83 APK: v82 + judge transport fix (retry-on-empty at escalated budget for verdicts + review, clean failure lines, no raw dumps; suite 111).
 # floating, thoughts as a bottom sheet over the full-screen 3D world, like
 # the pad chip (his v76 feedback: red-circled segment must be ON the world).
 # aapt2 + javac + d8, transplant lib/ + chaquopy assets from v47, sign.
 # NOTE: build dir is passed to the Python steps via $B (never hardcoded) — v72 lesson.
 set -e
 PROJ=~/workspace/neural-lab
-B=$PROJ/build84
-OUT=neural-lab-v82-hackathon.apk
+B=$PROJ/build85
+OUT=neural-lab-v83-hackathon.apk
 SDK=~/workspace/.android-sdk
 BT=$SDK/build-tools/36.1.0
 AJAR=$SDK/platforms/android-36/android.jar

@@ -448,5 +448,83 @@ console.log('— v82 review fixes —');
   ok('app JSON learned state at full caps = ' + appBytes + 'B (< 35 KB worst case; weights accounted separately: 808 × 2B Q8.8 = 1,616B)', appBytes < 35840, appBytes + 'B');
 }
 
-console.log('\nRESULT: ' + pass + ' passed, ' + fail + ' failed');
-process.exit(fail ? 1 : 0);
+/* ---------- v83: judge transport — retry-on-empty, clean failure lines ---------- */
+console.log('— v83 judge transport —');
+const MJMOD = require('/home/hatch/workspace/neural-lab/www/meta-judge.js');
+MJMOD.localStorage = { getItem: () => 'test-key' };
+function fakeBrain() {
+  return { events: [], thoughts: [], minted: null, ghosts: [], ghostCap: 9, episodes: 3,
+    think(s) { this.thoughts.push(s); },
+    addJudgeFragment(g, a, s) { this.minted = { action: a, severity: s }; return {}; },
+    status() { return { ghosts: 1, molecules: 0, gravity: 0, episodes: 3, params: 808, ceiling: 52000 }; } };
+}
+function bridgeReply(content, finish) {
+  return 'HTTP 200\n' + JSON.stringify({ choices: [{ message: { content: content }, finish_reason: finish }] });
+}
+{
+  // reasoning ate the budget (length/null) → retry at 3072 → verdict lands
+  const bodies = [];
+  global.NB = { metaJudgePost(key, body) {
+    bodies.push(JSON.parse(body));
+    return bodies.length === 1 ? bridgeReply(null, 'length')
+                                : bridgeReply('It looped on inspect until the timeout.\nFRAG:5:2', 'stop');
+  } };
+  const b = fakeBrain();
+  const g = { seal: 'deadbeef', acts: [], judgment: null, judgedBy: null };
+  MJ.judgeGhost(b, g, { objective: 'inspect', why: 'timeout', action: 5 });
+  ok('empty reply retried once at escalated budget (1024 → 3072)', bodies.length === 2 && bodies[1].max_tokens === 3072,
+     'calls=' + bodies.length + ' mt2=' + (bodies[1] && bodies[1].max_tokens));
+  ok('retried verdict lands on the ghost', g.judgment === 'It looped on inspect until the timeout.', g.judgment);
+  ok('retried verdict still mints its fragment', !!b.minted && b.minted.action === 5 && b.minted.severity === 2, JSON.stringify(b.minted));
+  const allText = b.thoughts.join(' ') + b.events.map(e => e.msg).join(' ');
+  ok('no raw API dumps in the log lines', allText.indexOf('chatcmpl') < 0 && allText.indexOf('raw:') < 0);
+}
+{
+  // both attempts empty → clean failure, seal unaffected
+  let calls = 0;
+  global.NB = { metaJudgePost() { calls++; return bridgeReply(null, 'length'); } };
+  const b = fakeBrain();
+  const g = { seal: 'cafef00d', acts: [], judgment: null, judgedBy: null };
+  MJ.judgeGhost(b, g, { objective: 'rest', why: 'stuck', action: 4 });
+  ok('double-empty: judgment unset, failure line is clean + mentions the retry',
+     g.judgment === null && calls === 2 && b.thoughts.some(t => t.indexOf('empty reply') >= 0 && t.indexOf('retried at a larger budget') >= 0),
+     b.thoughts.join(' | '));
+}
+{
+  // first-try success → exactly one call
+  let calls = 0;
+  global.NB = { metaJudgePost() { calls++; return bridgeReply('Clean verdict.\nFRAG:1:3', 'stop'); } };
+  const b = fakeBrain();
+  const g = { seal: '0badf00d', acts: [], judgment: null, judgedBy: null };
+  MJ.judgeGhost(b, g, { objective: 'seek food', why: 'timeout', action: 1 });
+  ok('first-try success: one call, verdict + fragment', calls === 1 && g.judgment === 'Clean verdict.' && !!b.minted && b.minted.severity === 3);
+}
+{
+  // Judge's Review rides the same transport: empty → retry → paragraph stored
+  let calls = 0;
+  global.NB = { metaJudgePost() { calls++; return calls === 1 ? bridgeReply(null, 'length') : bridgeReply('A paragraph review of the ghosts.', 'stop'); } };
+  const b = fakeBrain();
+  b.ghosts = [{ seal: 'abc123', objective: 'inspect', status: 'sealed', judgment: 'x' }];
+  let doneText = null;
+  MJ.judgeReview(b, t => { doneText = t; });
+  ok('review retries on empty and stores the paragraph', calls === 2 && !!b.lastJudgeReview && b.lastJudgeReview.text === 'A paragraph review of the ghosts.' && doneText === b.lastJudgeReview.text,
+     'calls=' + calls);
+}
+const v83async = (async () => {
+  // fetch fallback path (no NB): verdict lands, fragment mints
+  delete global.NB;
+  global.fetch = () => Promise.resolve({ ok: true, status: 200,
+    json: () => Promise.resolve({ choices: [{ message: { content: 'Fetch verdict.\nFRAG:1:1' }, finish_reason: 'stop' }] }) });
+  const b = fakeBrain();
+  const g = { seal: 'feedface', acts: [], judgment: null, judgedBy: null };
+  MJ.judgeGhost(b, g, { objective: 'seek food', why: 'timeout', action: 1 });
+  await new Promise(r => setTimeout(r, 30));
+  ok('fetch fallback: verdict lands + fragment mints', g.judgment === 'Fetch verdict.' && !!b.minted && b.minted.action === 1,
+     'judgment=' + g.judgment);
+  delete global.fetch;
+})();
+
+v83async.then(() => {
+  console.log('\nRESULT: ' + pass + ' passed, ' + fail + ' failed');
+  process.exit(fail ? 1 : 0);
+});

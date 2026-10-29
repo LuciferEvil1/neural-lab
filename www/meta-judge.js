@@ -41,6 +41,14 @@
  * v81 also adds judgeReview(): one bundled-history call that writes a
  * short review paragraph over the brain's recent ghosts, shown on the
  * Instruments "Judge's Review" card. Same key/transport rules.
+ * v83: ONE transport (callJudge) for both calls, with retry-on-empty.
+ * muse-spark-1.3 reasons before it speaks; when the reasoning uses the
+ * whole max_tokens budget the API returns finish_reason "length" with
+ * content null (the v74 mode — seen live again on v82 once the v81
+ * prompts grew). An empty 2xx reply now retries ONCE at an escalated
+ * budget (verdict 1024 → 3072; review 1200 → 3600). The v74 raw-reply
+ * dumps in the think log are gone: failure lines name the reason only,
+ * so the demo's thought log stays readable.
  */
 (function (global) {
   'use strict';
@@ -100,6 +108,78 @@
     ];
   }
 
+  /* v83 — ONE transport for both judge calls, with retry-on-empty.
+   * Native NB bridge first (Java HTTPS bypasses the WebView file-URL
+   * block from v70/v71), fetch fallback; the key travels only as the
+   * bridge argument / Authorization header. When a 2xx reply carries
+   * no content (the reasoning ate the budget — finish_reason "length",
+   * content null), retry ONCE at an escalated budget. cb(text, info)
+   * always fires exactly once and never throws; info = { code, finish,
+   * transport, attempts }. */
+  function escalated(maxTokens) { return Math.min(4096, Math.max(maxTokens * 3, 2048)); }
+
+  function callJudge(key, messages, maxTokens, cb) {
+    var info = { code: 0, finish: '', transport: '', attempts: 0 };
+    var fired = false;
+    function finish(text) { if (!fired) { fired = true; cb(text || null, info); } }
+    try {
+      if (typeof NB !== 'undefined' && NB && typeof NB.metaJudgePost === 'function') {
+        info.transport = 'bridge';
+        var budget = maxTokens;
+        for (var attempt = 0; attempt < 2; attempt++) {
+          info.attempts++;
+          var body = JSON.stringify({ model: MODEL, messages: messages, max_tokens: budget, temperature: 0.2 });
+          var res = null;
+          try { res = NB.metaJudgePost(key, body); } catch (e) { finish(null); return; }
+          var nl = res.indexOf('\n');
+          var code = 0, payload = '';
+          if (nl >= 0) { code = parseInt(res.slice(5, nl), 10) || 0; payload = res.slice(nl + 1); }
+          info.code = code;
+          if (code < 200 || code >= 300 || !payload) { finish(null); return; }
+          var data = null;
+          try { data = JSON.parse(payload); } catch (e) { finish(null); return; }
+          var text = '';
+          try { text = data.choices[0].message.content; } catch (e) { text = ''; }
+          try { info.finish = data.choices[0].finish_reason || ''; } catch (e) { info.finish = ''; }
+          if (text) { finish(String(text)); return; }
+          if (attempt === 0) { budget = escalated(budget); continue; }
+          finish(null); return;
+        }
+        return;
+      }
+    } catch (e) { finish(null); return; }
+    info.transport = 'fetch';
+    if (typeof fetch === 'undefined') { finish(null); return; }
+    function attemptFetch(budget, isRetry) {
+      info.attempts++;
+      var controller = null;
+      try { if (typeof AbortController !== 'undefined') controller = new AbortController(); } catch (e) { controller = null; }
+      var timer = null;
+      if (controller) timer = setTimeout(function () { try { controller.abort(); } catch (e) {} }, TIMEOUT_MS);
+      var fbody = JSON.stringify({ model: MODEL, messages: messages, max_tokens: budget, temperature: 0.2 });
+      var opts = { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, body: fbody };
+      if (controller) opts.signal = controller.signal;
+      fetch(ENDPOINT, opts).then(function (resp) {
+        info.code = resp.status || 0;
+        if (!resp.ok) throw new Error('http');
+        return resp.json();
+      }).then(function (data) {
+        if (timer) clearTimeout(timer);
+        var text = '';
+        try { text = data.choices[0].message.content; } catch (e) { text = ''; }
+        try { info.finish = data.choices[0].finish_reason || ''; } catch (e) { info.finish = ''; }
+        if (text) { finish(String(text)); return; }
+        if (!isRetry) { attemptFetch(escalated(budget), true); return; }
+        finish(null);
+      }).catch(function (err) {
+        if (timer) clearTimeout(timer);
+        if (err && err.name === 'AbortError') info.finish = 'timeout';
+        finish(null);
+      });
+    }
+    attemptFetch(maxTokens, false);
+  }
+
   /* Fire-and-forget: always resolves, never throws. */
   function judgeGhost(brain, ghost, outcome) {
     try {
@@ -109,145 +189,36 @@
         brain.think('Meta judge skipped on ghost ' + ghost.seal + ' — no API key set.');
         return;
       }
-      if (typeof fetch === 'undefined') {
-        brain.events.push({ kind: 'judge', msg: '⚖ Meta judge unavailable in this build — ghost sealed locally.' });
-        brain.think('Meta judge unavailable on ghost ' + ghost.seal + ' — sealed locally.');
-        return;
-      }
-      var controller = null;
-      try { if (typeof AbortController !== 'undefined') controller = new AbortController(); } catch (e) { controller = null; }
-      var timer = null;
-      if (controller) {
-        timer = setTimeout(function () { try { controller.abort(); } catch (e) {} }, TIMEOUT_MS);
-      }
-      var body = JSON.stringify({
-        model: MODEL,
-        messages: buildPrompt(ghost, outcome),
-        max_tokens: MAX_TOKENS,
-        temperature: 0.2
-      });
-      /* v72: prefer the native bridge (NB.metaJudgePost) — Java HTTPS has
-       * no file-URL restrictions, so it bypasses the WebView block that
-       * kept Requests at 0 in v70/v71 even with a key saved. The key
-       * travels only as the bridge argument and only leaves in the
-       * Authorization header, exactly as with fetch. Falls through to
-       * fetch if the bridge is absent (older builds, Node tests). */
-      try {
-        if (typeof NB !== 'undefined' && NB && typeof NB.metaJudgePost === 'function') {
-          if (timer) clearTimeout(timer);
-          var res = NB.metaJudgePost(key, body);
-          var nl = res.indexOf('\n');
-          var code = 0;
-          var payload = '';
-          if (nl >= 0) {
-            code = parseInt(res.slice(5, nl), 10) || 0;
-            payload = res.slice(nl + 1);
-          }
-          var rawSnippet = payload ? payload.replace(/[\r\n]+/g, ' ').slice(0, 200) : '(empty body)';
-          if (code < 200 || code >= 300) {
-            brain.events.push({ kind: 'judge', msg: '⚖ Meta judge HTTP ' + (code || 0) + ' — ghost sealed locally.' });
-            brain.think('Meta judge bridge HTTP ' + (code || 0) + ' on ghost ' + ghost.seal + ' — reply: ' + rawSnippet + ' — sealed locally.');
+      callJudge(key, buildPrompt(ghost, outcome), MAX_TOKENS, function (text, info) {
+        try {
+          if (!text) {
+            var reason = 'empty reply';
+            if (info && info.code && (info.code < 200 || info.code >= 300)) reason = 'HTTP ' + info.code;
+            else if (info && info.finish === 'timeout') reason = 'timeout';
+            else if (info && info.transport === 'fetch' && !info.code) reason = 'unreachable';
+            brain.events.push({ kind: 'judge', msg: '⚖ Meta judge ' + reason + ' — ghost sealed locally.' });
+            brain.think('Meta judge ' + reason + ' on ghost ' + ghost.seal +
+              (info && info.attempts > 1 ? ' (retried at a larger budget)' : '') + ' — sealed locally.');
             return;
           }
-          var data = JSON.parse(payload);
-          var text2 = '';
-          try { text2 = data.choices[0].message.content; } catch (e) { text2 = ''; }
-          var frag2 = parseFrag(text2);
-          text2 = clean(stripFrag(text2), 240);
-          if (!text2) {
+          var frag = parseFrag(text);
+          var judgment = clean(stripFrag(text), 240);
+          if (!judgment) {
             brain.events.push({ kind: 'judge', msg: '⚖ Meta judge empty reply — ghost sealed locally.' });
-            brain.think('Meta judge bridge empty reply on ghost ' + ghost.seal + ' — raw: ' + rawSnippet + ' — sealed locally.');
+            brain.think('Meta judge empty reply on ghost ' + ghost.seal + ' — sealed locally.');
             return;
           }
-          ghost.judgment = text2;
+          ghost.judgment = judgment;
           ghost.judgedBy = 'meta-spark';
-          brain.events.push({ kind: 'judge', msg: '⚖ Meta judge on ghost ' + ghost.seal + ': "' + text2 + '"' });
-          brain.think('Meta judge on ghost ' + ghost.seal + ': ' + text2);
-          mintFragment(brain, ghost, frag2);
-          return;
-        }
-      } catch (e) {
-        if (timer) clearTimeout(timer);
-        brain.events.push({ kind: 'judge', msg: '⚖ Meta judge error — ghost sealed locally.' });
-        brain.think('Meta judge bridge error on ghost ' + ghost.seal + ' — sealed locally.');
-        return;
-      }
-      /* v73 diagnostic: reaching here means the bridge did not run at all
-       * (NB absent) — say so visibly before the fetch fallback. */
-      try { brain.think('Meta judge: no native bridge on ghost ' + ghost.seal + ' — fetch fallback.'); } catch (e) {}
-      /* The key travels ONLY here, in the Authorization header. */
-      var opts = { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, body: body };
-      if (controller) opts.signal = controller.signal;
-      fetch(ENDPOINT, opts).then(function (resp) {
-        if (!resp.ok) {
-          var err = new Error('http');
-          err.status = resp.status;
-          throw err;
-        }
-        return resp.json();
-      }).then(function (data) {
-        if (timer) clearTimeout(timer);
-        var text = '';
-        try { text = data.choices[0].message.content; } catch (e) { text = ''; }
-        var frag = parseFrag(text);
-        text = clean(stripFrag(text), 240);
-        if (!text) throw new Error('empty');
-        ghost.judgment = text;
-        ghost.judgedBy = 'meta-spark';
-        brain.events.push({ kind: 'judge', msg: '⚖ Meta judge on ghost ' + ghost.seal + ': "' + text + '"' });
-        brain.think('Meta judge on ghost ' + ghost.seal + ': ' + text);
-        mintFragment(brain, ghost, frag);
-      }).catch(function (err) {
-        if (timer) clearTimeout(timer);
-        var reason = 'unreachable';
-        if (err && err.name === 'AbortError') reason = 'timeout';
-        else if (err && err.status) reason = 'HTTP ' + err.status;
-        else if (err && err.message === 'empty') reason = 'empty reply';
-        brain.events.push({ kind: 'judge', msg: '⚖ Meta judge ' + reason + ' — ghost sealed locally.' });
-        brain.think('Meta judge fetch ' + reason + ' on ghost ' + ghost.seal + ' — sealed locally.');
+          brain.events.push({ kind: 'judge', msg: '⚖ Meta judge on ghost ' + ghost.seal + ': "' + judgment + '"' });
+          brain.think('Meta judge on ghost ' + ghost.seal + ': ' + judgment);
+          mintFragment(brain, ghost, frag);
+        } catch (e) { /* the judge must never break the brain */ }
       });
     } catch (e) {
       /* The judge must never break the seal or the app. */
       try { brain.events.push({ kind: 'judge', msg: '⚖ Meta judge error — ghost sealed locally.' }); } catch (e2) {}
     }
-  }
-
-  /* v81 — transport for the review call only (judgeGhost keeps its own
-   * battle-tested paths untouched). Same rules: native NB bridge first,
-   * fetch fallback, key only in the Authorization header / bridge arg,
-   * always calls back, never throws. cb(text) on success, cb(null) else. */
-  function postChat(key, messages, maxTokens, cb) {
-    var body = JSON.stringify({ model: MODEL, messages: messages, max_tokens: maxTokens, temperature: 0.2 });
-    try {
-      if (typeof NB !== 'undefined' && NB && typeof NB.metaJudgePost === 'function') {
-        var res = NB.metaJudgePost(key, body);
-        var nl = res.indexOf('\n');
-        var code = 0, payload = '';
-        if (nl >= 0) { code = parseInt(res.slice(5, nl), 10) || 0; payload = res.slice(nl + 1); }
-        if (code < 200 || code >= 300 || !payload) { cb(null); return; }
-        var data = JSON.parse(payload);
-        var t = '';
-        try { t = data.choices[0].message.content; } catch (e) { t = ''; }
-        cb(t ? String(t) : null);
-        return;
-      }
-    } catch (e) { cb(null); return; }
-    if (typeof fetch === 'undefined') { cb(null); return; }
-    var controller = null;
-    try { if (typeof AbortController !== 'undefined') controller = new AbortController(); } catch (e) { controller = null; }
-    var timer = null;
-    if (controller) timer = setTimeout(function () { try { controller.abort(); } catch (e) {} }, TIMEOUT_MS);
-    var opts = { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, body: body };
-    if (controller) opts.signal = controller.signal;
-    fetch(ENDPOINT, opts).then(function (resp) {
-      if (!resp.ok) throw new Error('http');
-      return resp.json();
-    }).then(function (data) {
-      if (timer) clearTimeout(timer);
-      var t = '';
-      try { t = data.choices[0].message.content; } catch (e) { t = ''; }
-      cb(t ? String(t) : null);
-    }).catch(function () { if (timer) clearTimeout(timer); cb(null); });
   }
 
   /* v81 — Judge's Review: ONE call over the brain's recent ghost history.
@@ -285,7 +256,7 @@
         { role: 'user', content: user }
       ];
       brain.think('Asking the Meta judge to review my recent ghosts…');
-      postChat(key, messages, 600, function (raw) {
+      callJudge(key, messages, 1200, function (raw) {
         try {
           var txt = clean(raw, 600);
           if (!txt) {
