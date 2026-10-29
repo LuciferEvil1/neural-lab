@@ -40,7 +40,7 @@ Built by Ahkeem Barros (**Team Annihilus**) for the Meta Global AI Developer Hac
   judge), `app.js` plus feature modules, `index.html`.
 - `src/` — the Android host: `MainActivity` and the native bridges (HTTP bridge used
   by the judge call, Drive bridge, gym/observer features).
-- `terrarium_tests.js` — the brain-core test suite (97 tests, run with Node).
+- `terrarium_tests.js` — the brain-core test suite (103 tests, run with Node).
 - `build.sh` — the APK build used for the current build (aapt2 + javac + d8 +
   apksigner; Android SDK build-tools 36.1.0, JDK 21).
 
@@ -52,7 +52,12 @@ features, and the C export of the trained brain.
 **Built during the hackathon:** the Meta AI judge loop inside the Ghost seal step,
 the judge fragment (verdicts minting steering molecules) and the Judge's Review
 card, the Dish instruments, the fullscreen demo view with its swipe deck, and the
-demo/submission packaging.
+demo/submission packaging. v82 (Oct 29) hardened two invariants an external code
+review caught: Net2Net growth steps are projected against the substrate ceiling
+before applying (the ceiling is a hard bound, never crossed), and one judge
+fragment per ghost is enforced in the core, not just by the call flow. The suite
+also measures the learned-state accounting boundary: the chip record model at full
+caps is 9,952 bytes; the app-side JSON worst case is ≈30.9 KB (weights separate).
 
 ## Build notes
 

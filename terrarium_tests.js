@@ -105,7 +105,7 @@ const snap = { energy: 80, charge: 50, dayPhase: 0.3, orbDist: 5, orbBear: 0.4, 
   }
   ok('plateau triggers auto-expansion growth', grew, 'params ' + pcStart + ' → ' + b.status().params);
   ok('growth events counted', b.growthEvents >= 1);
-  ok('growth never exceeds ceiling', b.status().params <= b.status().ceiling + 4000, 'params=' + b.status().params + ' ceiling=' + b.status().ceiling);
+  ok('growth never exceeds ceiling', b.status().params <= b.status().ceiling, 'params=' + b.status().params + ' ceiling=' + b.status().ceiling);
 }
 
 /* ---------- world sim ---------- */
@@ -379,11 +379,23 @@ ok('stripFrag removes the tail, keeps the sentence', stripped.indexOf('FRAG') < 
   ok('severity 3 → mass 0.9 (same ladder as ghost fragments)', approx(mol.mass, 0.9, 1e-9), 'mass=' + mol.mass);
   let bi = 0; for (let a = 1; a < mol.bias.length; a++) if (mol.bias[a] < mol.bias[bi]) bi = a;
   ok('judge fragment leans hardest away from the blamed action', bi === 6 && mol.bias[6] < -0.7, 'bias[6]=' + mol.bias[6]);
-  const mol1 = b.addJudgeFragment(g, 2, 1);
-  ok('severity 1 → mass 0.5', !!mol1 && approx(mol1.mass, 0.5, 1e-9), 'mass=' + (mol1 && mol1.mass));
-  ok('bad action index rejected (no fragment)', b.addJudgeFragment(g, 9, 2) === null && b.addJudgeFragment(g, -1, 2) === null);
-  g.status = 'redeemed';
-  ok('no fragment once the ghost is redeemed', b.addJudgeFragment(g, 0, 2) === null);
+  ok('one fragment per ghost — second mint refused at the core', b.addJudgeFragment(g, 2, 1) === null && b.molecules.length === before + 1);
+  // a fresh sealed ghost: bad indices refuse WITHOUT consuming its one mint
+  const perc2 = b.sense(snap);
+  const dec2 = b.decide(perc2);
+  b.learn({ success: false, reward: -0.55, objective: dec2.name, percept: perc2, action: dec2.action, ox: 4, oz: 4, why: 'stuck 2' });
+  const g2 = b.ghosts[b.ghosts.length - 1];
+  ok('second ghost sealed', !!g2 && g2 !== g && g2.status === 'sealed');
+  ok('bad action index rejected (no fragment)', b.addJudgeFragment(g2, 9, 2) === null && b.addJudgeFragment(g2, -1, 2) === null);
+  const mol1 = b.addJudgeFragment(g2, 2, 1);
+  ok('severity 1 → mass 0.5 (refusals did not consume the mint)', !!mol1 && approx(mol1.mass, 0.5, 1e-9), 'mass=' + (mol1 && mol1.mass));
+  // a third ghost, redeemed before any verdict lands → no fragment
+  const perc3 = b.sense(snap);
+  const dec3 = b.decide(perc3);
+  b.learn({ success: false, reward: -0.55, objective: dec3.name, percept: perc3, action: dec3.action, ox: 5, oz: 5, why: 'stuck 3' });
+  const g3 = b.ghosts[b.ghosts.length - 1];
+  g3.status = 'redeemed';
+  ok('no fragment once the ghost is redeemed', b.addJudgeFragment(g3, 0, 2) === null);
   ok('brain still decides with judge fragments live', typeof b.decide(b.sense(snap)).action === 'number');
 }
 {
@@ -397,6 +409,43 @@ ok('stripFrag removes the tail, keeps the sentence', stripped.indexOf('FRAG') < 
   const mol = b.addJudgeFragment(g, 4, 2);
   ok('judge fragment respects the molecule cap — overflow collapses to gravity', !!mol && b.molecules.length <= b.moleculeCap && b.gravity.length > wells0,
     'mols=' + b.molecules.length + ' wells ' + wells0 + '→' + b.gravity.length);
+}
+
+/* ---------- v82: round-2 review fixes — ceiling guard + state accounting ---------- */
+console.log('— v82 review fixes —');
+{
+  const b = freshBrain();
+  const pc = b.net.paramCount();
+  // stage perfect plateau conditions, then set a ceiling one step cannot fit under
+  b.returns = Array(24).fill(0.5);
+  b.episodesSinceGrowth = 99;
+  b.ceiling = pc + 10;
+  b._maybeGrow();
+  ok('growth step that would cross the ceiling is refused (hard bound)', b.net.paramCount() === pc, 'params=' + b.net.paramCount() + ' ceiling=' + b.ceiling);
+  b.ceiling = 2000000;
+  b.episodesSinceGrowth = 99;
+  b._maybeGrow();
+  ok('growth proceeds when the step fits under the ceiling', b.net.paramCount() > pc, 'params=' + b.net.paramCount());
+}
+{
+  // learned-state accounting at full caps — the <10 KB claim is the CHIP record model
+  const chipBytes = 28 * 304 + 56 * 24 + 16 * 6;
+  ok('chip record model at full caps = ' + chipBytes + 'B (< 10 KB)', chipBytes < 10240);
+  const b = freshBrain({ ghostCap: 28, moleculeCap: 56 });
+  for (let i = 0; i < 28; i++) {
+    const perc = b.sense(snap);
+    const dec = b.decide(perc);
+    b.learn({ success: false, reward: -0.55, objective: dec.name, percept: perc, action: dec.action, ox: 3, oz: -2, why: 'fill' });
+    const g = b.ghosts[b.ghosts.length - 1];
+    g.acts = Array(40).fill('10,10:7');
+    g.judgment = 'x'.repeat(240);
+    g.judgedBy = 'meta-spark';
+  }
+  const rb = () => -0.7834521098;
+  while (b.molecules.length < 56) b.molecules.push({ bias: Array(8).fill(rb()), mass: 0.9, ox: 9.123, oz: 9.456 });
+  while (b.gravity.length < 16) b.gravity.push({ x: 1.111, z: 1.222, strength: 2.5 });
+  const appBytes = JSON.stringify({ ghosts: b.ghosts, molecules: b.molecules, gravity: b.gravity }).length;
+  ok('app JSON learned state at full caps = ' + appBytes + 'B (< 35 KB worst case; weights accounted separately: 808 × 2B Q8.8 = 1,616B)', appBytes < 35840, appBytes + 'B');
 }
 
 console.log('\nRESULT: ' + pass + ' passed, ' + fail + ' failed');

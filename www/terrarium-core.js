@@ -355,12 +355,16 @@ TrinityBrain.prototype._breakGhost = function (gi) {
  * ghosts still sealed when the verdict lands; the seal never waits on it. */
 TrinityBrain.prototype.addJudgeFragment = function (ghost, actionIdx, severity) {
   if (!ghost || ghost.status !== 'sealed') return null;
+  /* v82 (external round-2 review catch, verified): one fragment per ghost
+   * is enforced HERE, at the state boundary — not just by the call flow. */
+  if (ghost.judgeMinted) return null;
   var a = parseInt(actionIdx, 10), s = parseInt(severity, 10);
   if (!(a >= 0 && a < ACTIONS.length)) return null;
   if (!(s >= 1 && s <= 3)) s = 2;
   var bias = [];
   for (var i = 0; i < ACTIONS.length; i++) bias.push((i === a ? -0.8 : 0) + (Math.random() - 0.5) * 0.1);
   var mol = { bias: bias, mass: 0.5 + (s - 1) * 0.2, ox: ghost.ox || 0, oz: ghost.oz || 0, src: 'judge', seal: ghost.seal };
+  ghost.judgeMinted = true;
   this.molecules.push(mol);
   this.events.push({ kind: 'judge', msg: '⚖🧬 judge fragment minted from ghost ' + ghost.seal + ' — leans away from "' + ACTIONS[a] + '" (severity ' + s + '/3)' });
   this.think('The judge\'s verdict on ghost ' + ghost.seal + ' settles into a molecule — I lean away from "' + ACTIONS[a] + '" now.');
@@ -403,8 +407,14 @@ TrinityBrain.prototype._maybeGrow = function () {
   // grow the smaller hidden layer by 4 neurons (Net2Net — function preserved)
   var l = this.net.sizes[1] <= this.net.sizes[2] ? 0 : 1;
   var before = this.net.paramCount();
+  /* v82 (external round-2 review catch, verified): a growth step adds far
+   * more than 4 params — each new neuron costs sizes[l] inputs + 1 bias +
+   * sizes[l+2] outputs — and the old code checked the ceiling only BEFORE
+   * the step, so one step could land past it. Project the step first: if
+   * it would cross the ceiling, skip growth. The ceiling is a hard bound. */
+  var perNeuron = this.net.sizes[l] + 1 + (l + 2 < this.net.sizes.length ? this.net.sizes[l + 2] : 0);
+  if (before + perNeuron * 4 > this.ceiling) return;
   var added = this.net.growLayer(l, 4);
-  if (this.net.paramCount() > this.ceiling) { /* growth is capped by construction of small steps; note honestly */ }
   this.episodesSinceGrowth = 0;
   this.growthEvents++;
   this.events.push({ kind: 'growth', msg: '🌱 auto-expansion: hidden layer ' + (l + 1) + ' grew +4 neurons (' + before.toLocaleString() + ' → ' + this.net.paramCount().toLocaleString() + ' params, ceiling ' + this.ceiling.toLocaleString() + ') — Net2Net widening, function preserved' });
