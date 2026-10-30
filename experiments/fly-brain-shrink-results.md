@@ -66,3 +66,16 @@ The v2 regression has a named cause and a designed fix, in the architecture's ow
 3. **Merge-only mode for the archive/index path.** Disposal remains a living-memory operation (on-chip, where slots are the scarce currency). The archive keeps every class; the audit's archive job is consolidation and hygiene reporting only.
 
 Expected effect (to be measured, not assumed): the library still consolidates by ~8,110 merges, the +30% archive growth disappears, and fracture repair returns to at least the v1 line. Status: fix designed and recorded; the re-run is a separate, scheduled experiment.
+
+
+### v3 — the CHARGE fix (Oct 29, 2026, late; his hypothesis, implemented same night)
+
+Ahkeem's diagnosis of the v2 regression, in his words: Lilith "stripped states of the fly brain that were mapped as partially active and decided its state as a well without properly reading the nodes charge status." Mapped to the experiment: the v2 audit never read syn_count — a rare class wired with heavy synapse counts (fully charged, critical) was indistinguishable from dead buildup. v3 adds (a) a CHARGE check before quarantine — class total syn_count ≥ the median attested class's charge (Layer N floor: 1,016 synapses; Layer T floor: 168) → protected, however rare; this is candidate check #5 (age×strength) from the §13.1 list — and (b) cost-aware verdicts from the fix note (each quarantined class prices merge tax vs disposal carriage and takes the cheaper).
+
+**Layer N:** 42 quarantined in v2 → 31 (charge protected 11); verdicts: 8 merged, 23 disposed. Record 1,305,875 → **1,307,069 B (+0.09%)** — vs v2's +0.4%.
+
+**Layer T:** charge protected **2,513 classes**; quarantined 8,332 (v2: 10,845); verdicts: 1,949 merged, 6,383 disposed (6,394 neurons). Fragments 374,209 (v2) → 131,968 entries. Record 3,794,913 → **4,036,267 B (+6.4%, 49.1×)** — vs v2's +30.2% / 40.1×. **Fracture repair: 202/300 = 67.3% — fully restored to the v1 line** (v2: 63.3%).
+
+**Reading:** his charge hypothesis is validated in effect — the repair loss lived exactly where he pointed (high-charge rare classes condemned unread), and pricing the verdicts cut the size regression by four-fifths. The record still lands +6.4% over v1: the archive still pays something for any audit that disposes. The remaining designed step is the fix note's Δ-guard (abort the disposal stage if ΔBytes > 0, fall back to merge-only), which targets the residual. Status: v3 measured; v4 (Δ-guard) designed, not run.
+
+**Process note (Oct 29, recorded at his request):** the v3 fix was not found by code inspection. The v2 results above were reviewed by Ahkeem Barros, who identified the failure mode from the reported behavior alone — he had not read the audit implementation — and named both the missing variable (synaptic charge: the classes' total syn_count, which the audit never consulted) and the remedy (a strength/charge check before quarantine, the §13.1 candidate check #5). Implementation and measurement followed from that diagnosis. The design process of this project is human-conceived and AI-assisted: conception, function invention, and failure diagnosis are his; mathematics, code, and verification are produced under his direction.
