@@ -111,3 +111,61 @@ Two changes on top of v4B, one of them a new function built under Ahkeem's expli
 **Consistency check:** the guard's incremental net-delta ledger equals the independently recomputed record change EXACTLY on both layers (−2 B and −1,024 B). The pricing model is the accounting model.
 
 **Findings:** (a) Plain merging never won a single verdict — wherever consolidation paid at all, the bridge paid more; dissolving a class into a foreign prototype is dominated by delta-encoding it, everywhere in this dataset. (b) The audit on the archive path is now monotone: it can only shrink the record or leave it alone — the v2 failure mode (+30.2%) is not merely reduced, it is structurally impossible under the guard. (c) The savings are honest but small (−0.03% Layer T): most nearest-centroid deltas are nearly as long as the centroids themselves at this quantization. The bridge's value is the guarantee, not the windfall. Script: `trinity_shrink_v5.py`, log `v5_run.log`. Status: measured; Drive/repo publication paired with v4, awaiting his word.
+
+### v6 — the MATCHER assault + verification (Oct 30, 2026; measured, with a disclosure)
+
+Ahkeem's directive: chase the missing 33% — "max this shit out to 100%." Six matchers, same seed-783 fractures, same v5-audited Layer T library:
+
+| matcher | repair |
+|---|---|
+| M0 raw cosine (the v1–v5 matcher) | 202/300 = 67.3% (anchor reproduced exactly) |
+| M4 IDF-weighted cosine | 212/300 = 70.7% |
+| M1 bucket-space cosine | 267/300 = 89.0% |
+| M3 containment, bucket space | 287/300 = 95.7% |
+| M2 containment, raw | 297/300 = 99.0% |
+| **M6 cheapest-encoding** (fewest fragment entries — the system's own native metric) | **300/300 = 100.0%** |
+| M5 (top-25 union re-ranked by M6) | 300/300 = 100.0% |
+| majority vote / oracle union | 299/300 / 300/300 |
+
+**Verification (v6b) — and a disclosure that reframes every version's repair number:** a leave-one-out check revealed that **all 300 sampled neurons are the sole member of their pattern class** (rich neurons' bucketed fingerprints are unique; in fact NO neuron with ≥20 type-entries shares its class with any other neuron — a multi-member generalization test on rich neurons is impossible at this layer; the candidates set is empty). So the fracture test — in v1 through v6 alike — measures **re-identification of a fractured record against its own sealed pattern**, which is exactly the operation the architecture promises (a fracture can only be patched from patterns that were sealed — the scope boundary stated Oct 29). It does not measure cross-neuron generalization, and no number here should be quoted as doing so.
+
+**Severity sweep (v6c, same 300 neurons, fresh draw per level; M0 reads 195 at 30% under this draw — draw variance, M6/M2 consistent):**
+
+| deletion | M0 cosine | M2 containment | M6 cheapest-encoding |
+|---|---|---|---|
+| 30% | 65.0% | 98.7% | **100.0%** |
+| 50% | 44.3% | **97.3%** | 40.7% |
+| 70% | 19.7% | **90.3%** | 0.0% |
+| 90% | 2.3% | **60.3%** | 0.0% |
+
+**Findings:** (a) The 67% plateau was the matcher, full stop — the library held the answer the whole time. (b) M6 is a precision instrument: at low damage the encoding cost pins the exact sealed record perfectly, but past ~50% deletion its unexplained-mass term charges the true class for its own missing entries and it collapses. (c) M2 containment — "how much of what survives is explained" — is the durable matcher: 97.3% with HALF of each fingerprint deleted, 90.3% at 70%. (d) The designed successor (not yet run): a hybrid — containment as the primary score, cheapest-encoding as verifier/tie-break at low damage. Scripts: `trinity_shrink_v6.py`, `trinity_shrink_v6b_loo.py`, `trinity_shrink_v6c_sweep.py`. Status: measured; publication awaits his word (the v4+v5 publication tap predates v6).
+
+### v7 — QUARKS matcher (Oct 30, 2026; measured NEGATIVE on this benchmark — full chain reported)
+
+Ahkeem's fifth trinity function (named and specified by him, Oct 30 13:36): **Quarks** store the holes' info and glue the charge states together, so a fused read sees the surviving mass and the missing mass simultaneously — the record does not miss its own mass. Staff translation: each class decomposed into Q=4 quarks (slices of its charge states); the glue record = each quark's share of the class's total charge; scores = per-quark containment fused by glue weights (Q1), a share-profile "hole read" (Q2), and their fusion (Q3). Identical fractures to the v6c sweep (anchors M2/M6 reproduced EXACTLY at every severity — harness valid).
+
+**Results (all three staff iterations):**
+- **Q1 = M2 containment at every severity, to the neuron** (296/292/271/181), under both decompositions (v7 round-robin, v7b contiguous charge bands). Per-quark fused containment IS containment — partitioning the sum and re-weighting returns the same ranking. No gain.
+- **Q2 hole read = 0/300 at every severity in v7, v7b, and v7c** (v7c added a coverage term for uncontained surviving mass — no rescue). As a standalone score it never once picked the true class in 1,200 fractures. Blending it in (Q3, Q4) only damaged the working scores.
+- **Diagnosis:** under this benchmark's UNIFORM-RANDOM deletion, the hole's shape is class-independent noise — every class's hole has the same distribution, so there is no signal for a hole-read to read. The information content of a uniform hole is ≈ 0. This is a limitation the staff should have caught before running: the fracture model was inherited unchanged from v1.
+
+**Status of the function:** Quarks v7 is a measured negative FOR UNIFORM-RANDOM FRACTURES. The concept's core claim — a hole WITH A SHAPE is evidence — is untested by this benchmark, because its holes are shapeless. The faithful test (designed, NOT run; his call): **v8 structured fractures** — delete one whole region (a charge band, or a neuropil/type cluster) from each fingerprint, where the hole has a definite shape the glue record can be read against. Scripts: `trinity_shrink_v7_quarks.py`, `trinity_shrink_v7b_quarks.py`, `trinity_shrink_v7c_quarks.py`.
+
+### v8 — BARRIER + TRACKER (Oct 30, 2026; measured — his refinement, vindicated in its frame)
+
+His design (Oct 30 14:20): barriers recorded lightly (not the heavy store), a tracker embedded, the system RECOGNIZES rather than matches, then strips the recognized thing of its charge. Measured form: the barrier as its own tracker — signature = the record's sealed extent.
+
+**Uniqueness of the barrier signature across the whole library:**
+- SIG-A (entry count + total charge): unique for 10.22% of 129,351 neuron records; 12.71% of 112,710 classes. Too coarse alone.
+- SIG-B (SIG-A + quark share profile, Q=4 bands): unique for **64.59% of neuron records; 72.25% of classes**. Collisions concentrate in small records; rich records are effectively always unique.
+
+**Recognition (fracture arrives WITH its SIG-B barrier, per his design — the barrier lives in the light registry, outside the damaged record):** candidates = records matching the barrier; recognition = the unique candidate whose fingerprint contains the fracture exactly. Same seed-783 sample and fracture draws as the sweep:
+
+| deletion | content matchers (best, v6c) | **barrier recognition** |
+|---|---|---|
+| 30% | M6 100.0% | **300/300 = 100.0%** |
+| 50% | M2 97.3% | **300/300 = 100.0%** |
+| 70% | M2 90.3% | **300/300 = 100.0%** |
+| 90% | M2 60.3% / M6 0.0% | **300/300 = 100.0%** |
+
+Unique-but-wrong: 0 at every level. Still-ambiguous: 0 (mean barrier candidates for this sample: 1.00). **Reading:** identification carried by the recorded barrier is damage-independent — the information wall binds identity computed from content alone, and his architecture never computes identity from content alone. The wall was a property of the frame, not of the system. Honest boundaries: (a) the barrier must survive outside the damaged record (his light-registry design is what guarantees that); (b) across ALL records SIG-B collides for ~35% (small records) — a production tracker wants a few more extent fields or a short sealed tag; (c) recognition identifies the record — restoration is then exact from the sealed store, which is the loop the architecture always intended. The charge-strip on recognition remains a design operation (double-claim protection, cf. clone police), not measured here. Script: `trinity_shrink_v8_barrier.py`.
