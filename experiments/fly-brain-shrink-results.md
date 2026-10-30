@@ -79,3 +79,35 @@ Ahkeem's diagnosis of the v2 regression, in his words: Lilith "stripped states o
 **Reading:** his charge hypothesis is validated in effect — the repair loss lived exactly where he pointed (high-charge rare classes condemned unread), and pricing the verdicts cut the size regression by four-fifths. The record still lands +6.4% over v1: the archive still pays something for any audit that disposes. The remaining designed step is the fix note's Δ-guard (abort the disposal stage if ΔBytes > 0, fall back to merge-only), which targets the residual. Status: v3 measured; v4 (Δ-guard) designed, not run.
 
 **Process note (Oct 29, recorded at his request):** the v3 fix was not found by code inspection. The v2 results above were reviewed by Ahkeem Barros, who identified the failure mode from the reported behavior alone — he had not read the audit implementation — and named both the missing variable (synaptic charge: the classes' total syn_count, which the audit never consulted) and the remedy (a strength/charge check before quarantine, the §13.1 candidate check #5). Implementation and measurement followed from that diagnosis. The design process of this project is human-conceived and AI-assisted: conception, function invention, and failure diagnosis are his; mathematics, code, and verification are produced under his direction.
+
+### v4 — the Δ-GUARD, RUN (Oct 30, 2026; two readings tested, both measured)
+
+The guard was run two ways, because "abort the disposal stage" has two readings and they measure very differently. Both runs reproduced the v1 baselines (1,305,875 B / 3,794,913 B) and the v3 totals (1,307,069 B / 4,036,267 B) to the byte first, so the comparison is clean. Scripts: `trinity_shrink_v4.py` (variant A) and `trinity_shrink_v4b.py` (variant B), logs `v4_run.log` / `v4b_run.log`.
+
+**Variant A — merge-only fallback (the fix note's literal fallback). MEASURED WORSE, both layers.**
+- Layer N: 1,308,781 B (**+2,906, +0.22%**) — worse than v3's +1,194 B. All 31 quarantined classes merged, 0 disposed.
+- Layer T: 4,741,165 B (**+946,252, +24.9%, 41.8×**) — far worse than v3's +6.4%. All 8,332 quarantined classes merged, 0 disposed; fragments 131,968 → 296,209 entries.
+- Fracture repair: 200/300 = **66.7%** — below v3/v1's 67.3%.
+- Why it fails: v3's verdicts were already cost-aware, so forcing a merge picks the *more expensive* outcome for every disposed class by construction. Merge-only is not a guard; it is a tax hike. The fix note's fallback sentence is superseded by this measurement.
+
+**Variant B — abort disposal = KEEP the class (the literal "abort" reading). MEASURED BETTER, both layers.**
+- Layer N: 8 merged, 23 would-be-disposed classes kept as-is. Record 1,305,875 → **1,306,547 B (+672, +0.05%)** — better than v3's +1,194 B.
+- Layer T: 1,949 merged, 6,383 would-be-disposed classes kept. Final patterns 110,761 (v1: 112,710, v3: 104,378 — the library still consolidates by the merges). Record 3,794,913 → **3,925,523 B (+130,610, +3.4%, 50.5×)** — the v3 residual roughly halved (+6.4% → +3.4%).
+- Fracture repair: 203/300 = **67.7%** — at or above the v1/v3 line (one neuron over 202/300; treat as tied, not as a gain claim).
+- Why a residual remains at all: the merges themselves carry a fragment tax (merged members deviate more from foreign centroids) that exceeds the pattern-layer savings. Disposal was not the only cost driver — consolidation itself has a price in an exactness-preserving archive.
+
+**Verdict:** variant B is the correct guard semantics — abort disposal, keep the class, never force-merge. The guard as a safety contract now reads: a disposal that would grow the record does not happen; the class stays. The remaining +3.4% is the merge tax, not a disposal failure, and the next question (not yet run) is whether a per-merge abort — merging only when the merge itself does not grow the record — closes it to zero, or whether the archive path should simply report the audit and keep v1. Status: v4 measured Oct 30; results-doc addendum written locally; Drive copy and repo push await his word (not pushed unilaterally).
+
+### v5 — per-merge Δ-GUARD + the BRIDGE MOLECULE (Oct 30, 2026; measured)
+
+Two changes on top of v4B, one of them a new function built under Ahkeem's explicit license ("even if I have to create a new function to fix the merge problem"):
+
+1. **Per-merge Δ-guard** — every verdict is priced by its TRUE total-record delta, side effects included, and executes only if Δ ≤ 0 (Sleeping's guard applied per operation).
+2. **BRIDGE MOLECULE (new function)** — instead of dissolving a class into a foreign centroid and taxing every member's deviations forever, the *difference* between the two rounded centroids is stored ONCE as a sparse delta — a bridge fragment, in the Trinity's own terms a molecule carrying the correction. The bridged class's members then show exactly their own-centroid fragment counts; the only cost is the delta's bytes vs the full centroid's bytes. (If the home class later plain-merges, its bridges are re-based and the re-basing is priced into that merge's Δ.)
+
+**Layer N:** 8 bridged, 0 plain-merged, 23 guard-kept. Record 1,305,875 → **1,305,873 B (−2 B)** — the first audit to land BELOW v1 on this layer. Fragments unchanged (148,597).
+**Layer T:** 1,949 bridged, **0 plain-merged**, 6,383 guard-kept. Pattern layer 3,628,841 → 3,627,817 B. Record 3,794,913 → **3,793,889 B (−1,024 B, 52.3×)**. Fragments unchanged (41,518). Fracture repair 202/300 = 67.3% (matcher unchanged — the plateau is v6's target).
+
+**Consistency check:** the guard's incremental net-delta ledger equals the independently recomputed record change EXACTLY on both layers (−2 B and −1,024 B). The pricing model is the accounting model.
+
+**Findings:** (a) Plain merging never won a single verdict — wherever consolidation paid at all, the bridge paid more; dissolving a class into a foreign prototype is dominated by delta-encoding it, everywhere in this dataset. (b) The audit on the archive path is now monotone: it can only shrink the record or leave it alone — the v2 failure mode (+30.2%) is not merely reduced, it is structurally impossible under the guard. (c) The savings are honest but small (−0.03% Layer T): most nearest-centroid deltas are nearly as long as the centroids themselves at this quantization. The bridge's value is the guarantee, not the windfall. Script: `trinity_shrink_v5.py`, log `v5_run.log`. Status: measured; Drive/repo publication paired with v4, awaiting his word.
